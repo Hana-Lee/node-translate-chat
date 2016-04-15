@@ -68,6 +68,10 @@ io.on('connection', function (socket) {
             console.log('server error', resultJson.errorMessage, resultJson.errorCode);
           } else {
             var resultText = resultJson.message.result.translatedText;
+            socket.broadcast.emit('new message', {
+              username : socket.username,
+              message : resultText
+            });
             socket.emit('new message', {
               username : socket.username,
               message : resultText
@@ -87,6 +91,10 @@ io.on('connection', function (socket) {
       translateRequest.write(qs.stringify({source : source, target : target, text : data}));
       translateRequest.end();
     } else {
+      socket.broadcast.emit('new message', {
+        username : socket.username,
+        message : data
+      });
       socket.emit('new message', {
         username : socket.username,
         message : data
