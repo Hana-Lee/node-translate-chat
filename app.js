@@ -70,7 +70,7 @@ io.on('connection', function (socket) {
             var resultText = resultJson.message.result.translatedText;
             socket.broadcast.emit('new message', {
               username : socket.username,
-              message : resultText
+              message : resultText + '[' + data + ']'
             });
             socket.emit('new message', {
               username : socket.username,
@@ -92,10 +92,6 @@ io.on('connection', function (socket) {
       translateRequest.end();
     } else {
       socket.broadcast.emit('new message', {
-        username : socket.username,
-        message : data
-      });
-      socket.emit('new message', {
         username : socket.username,
         message : data
       });
