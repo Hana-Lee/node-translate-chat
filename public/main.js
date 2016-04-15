@@ -229,7 +229,7 @@ $(function () {
   socket.on('login', function (data) {
     connected = true;
     // Display the welcome message
-    var message = "Welcome to Socket.IO Chat – ";
+    var message = "채팅에 오신걸 환영합니다 ( 聊天中,欢迎光临! ) – ";
     log(message, {
       prepend : true
     });
