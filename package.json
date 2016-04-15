@@ -1,10 +1,11 @@
 {
   "name": "node-translate-chat",
   "version": "0.0.1",
-  "description": "Nodejs translate chat server",
+  "description": "Node.js and socket.io translate chat server",
   "main": "app.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "start" : "node app.js"
   },
   "repository": {
     "type": "git",
@@ -16,6 +17,7 @@
     "nodejs"
   ],
   "author": "Hana Lee",
+  "private": true,
   "license": "MIT",
   "bugs": {
     "url": "https://github.com/Hana-Lee/node-translate-chat/issues"
@@ -23,5 +25,8 @@
   "homepage": "https://github.com/Hana-Lee/node-translate-chat#readme",
   "dependencies": {
     "express": "^4.13.4"
+  },
+  "engines" : {
+    "node" : "4.4.3"
   }
 }
