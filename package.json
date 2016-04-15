@@ -1,0 +1,27 @@
+{
+  "name": "node-translate-chat",
+  "version": "0.0.1",
+  "description": "Nodejs translate chat server",
+  "main": "app.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Hana-Lee/node-translate-chat.git"
+  },
+  "keywords": [
+    "translate",
+    "chat",
+    "nodejs"
+  ],
+  "author": "Hana Lee",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/Hana-Lee/node-translate-chat/issues"
+  },
+  "homepage": "https://github.com/Hana-Lee/node-translate-chat#readme",
+  "dependencies": {
+    "express": "^4.13.4"
+  }
+}
