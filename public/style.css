@@ -80,7 +80,7 @@ ul {
 	letter-spacing: 3px;
 }
 
-.login.page .title, .login.page .usernameInput {
+.form label, .login.page .title, .login.page .usernameInput {
 	color: #fff;
 	font-weight: 100;
 }

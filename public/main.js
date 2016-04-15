@@ -18,11 +18,13 @@ $(function () {
 
   // Prompt for setting a username
   var username;
+  var selectedLang;
   var connected = false;
   var typing = false;
   var lastTypingTime;
   var $currentInput = $usernameInput.focus();
 
+  // var socket = io.connect('http://node-translate-chat.herokuapp.com/');
   var socket = io();
 
   function addParticipantsMessage(data) {
@@ -47,8 +49,12 @@ $(function () {
       $currentInput = $inputMessage.focus();
 
       // Tell the server your username
-      socket.emit('add user', username);
+      socket.emit('add user', {username: username, lang: selectedLang});
     }
+  }
+
+  function setLang() {
+    selectedLang = $(':radio[name="lang-choice"]:checked').val();
   }
 
   // Sends a chat message
@@ -63,6 +69,7 @@ $(function () {
         username : username,
         message : message
       });
+
       // tell server to execute 'new message' and send along one parameter
       socket.emit('new message', message);
     }
@@ -202,6 +209,7 @@ $(function () {
         socket.emit('stop typing');
         typing = false;
       } else {
+        setLang();
         setUsername();
       }
     }
