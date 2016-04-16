@@ -13,7 +13,9 @@ var TRANSLATE_PORT = 443;
 var ZH_CH = 'zh-CN';
 var KO_KR = 'ko';
 var CLIENT_ID = 'WN5sao0PugzKjY1gz8RH';
+var SEC_CLIENT_ID = 'gVFv3M6q5q2h6DqqqAqN';
 var CLIENT_SECRET = 'mZNiHTI1R8';
+var SEC_CLIENT_SECRET = '8Pvx3qmpuC';
 
 var translateOptions = {
   host : TRANSLATE_HOST, port : TRANSLATE_PORT, path : TRANSLATE_URI, method : 'POST',
@@ -41,8 +43,8 @@ io.on('connection', function (socket) {
   socket.on('new message', function (data) {
     // we tell the client to execute 'new message'
 
-    var koreanReg = new RegExp(/[가-힣]/gi);
-    var chineseReg = new RegExp(/[\u4e00-\u9fa5]*/g);
+    var koreanReg = /[가-힣]/g;
+    var chineseReg = /[\u4e00-\u9fa5]*/g;
     var source = KO_KR;
     var target = ZH_CH;
     var translateAvailable = false;
