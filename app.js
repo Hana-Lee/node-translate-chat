@@ -62,8 +62,9 @@ io.on('connection', function (socket) {
     if (translateAvailable) {
       var translateRequest = https.request(translateOptions, function (res) {
         console.log('status:', res.statusCode);
-        console.log('HEADERS: ' + res.headers);
+
         res.setEncoding('utf8');
+
         res.on('data', function (result) {
           var resultJson = JSON.parse(result);
           if (resultJson.errorMessage) {
