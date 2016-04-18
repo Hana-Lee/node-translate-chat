@@ -1,29 +1,36 @@
-// Setup basic express server
+/*jslint
+ browser  : true,
+ continue : true,
+ devel    : true,
+ indent   : 2,
+ maxerr   : 50,
+ nomen    : true,
+ plusplus : true,
+ regexp   : true,
+ vars     : true,
+ white    : true,
+ todo     : true,
+ node     : true
+ */
+'use strict';
+
 var https = require('https');
-var qs = require('querystring');
 var express = require('express');
 var app = express();
 var server = require('http').createServer(app);
 var io = require('socket.io')(server);
 var port = process.env.PORT || 3000;
+// var Translator = require('naver-translator');
+var MsTranslator = require('mstranslator');
 
-var TRANSLATE_HOST = 'openapi.naver.com';
-var TRANSLATE_URI = '/v1/language/translate?source=ko';
-var TRANSLATE_PORT = 443;
 var ZH_CH = 'zh-CN';
 var KO_KR = 'ko';
-var CLIENT_ID = 'WN5sao0PugzKjY1gz8RH';
-var SEC_CLIENT_ID = 'gVFv3M6q5q2h6DqqqAqN';
-var CLIENT_SECRET = 'mZNiHTI1R8';
-var SEC_CLIENT_SECRET = '8Pvx3qmpuC';
-
-var translateOptions = {
-  host : TRANSLATE_HOST, port : TRANSLATE_PORT, path : TRANSLATE_URI, method : 'POST',
-  headers : {
-    'Content-Type' : 'application/x-www-form-urlencoded', 'Accept' : '*/*',
-    'X-Naver-Client-Id' : CLIENT_ID, 'X-Naver-Client-Secret' : CLIENT_SECRET
-  }
-};
+// var CLIENT_ID = process.env.NAVER_CLIENT_ID;
+// var CLIENT_SECRET = process.env.NAVER_CLIENT_SECRET;
+// var SEC_CLIENT_ID = process.env.NAVER_CLIENT_ID_2;
+// var SEC_CLIENT_SECRET = process.env.NAVER_CLIENT_SECRET_2;
+var MS_CLIENT_ID = process.env.MS_CLIENT_ID;
+var MS_CLIENT_SECRET = process.env.MS_CLIENT_SECRET;
 
 server.listen(port, function () {
   console.log('Server listening at port %d', port);
@@ -40,60 +47,61 @@ io.on('connection', function (socket) {
   var addedUser = false;
 
   // when the client emits 'new message', this listens and executes
-  socket.on('new message', function (data) {
+  socket.on('new message', function (/** @type {String} */data) {
     // we tell the client to execute 'new message'
 
     var koreanReg = /[가-힣]/g;
-    var chineseReg = /[\u4e00-\u9fa5]*/g;
-    var source = KO_KR;
-    var target = ZH_CH;
-    var translateAvailable = false;
+    // var chineseReg = /[\u4e00-\u9fa5]*/g;
+    // var source = KO_KR;
+    // var target = ZH_CH;
+    var translateAvailable = true;
 
-    if (chineseReg.test(data) && socket.userlang === ZH_CH) {
-      source = ZH_CH;
-      target = KO_KR;
-      translateAvailable = true;
-    } else if (koreanReg.test(data) && socket.userlang === KO_KR) {
-      source = KO_KR;
-      target = ZH_CH;
-      translateAvailable = true;
+    if (koreanReg.test(data)) {
+      // source = KO_KR;
+      // target = ZH_CH;
+      translateAvailable = false;
     }
 
     if (translateAvailable) {
-      var translateRequest = https.request(translateOptions, function (res) {
-        console.log('status:', res.statusCode);
-
-        res.setEncoding('utf8');
-
-        res.on('data', function (result) {
-          var resultJson = JSON.parse(result);
-          if (resultJson.errorMessage) {
-            console.log('server error', resultJson.errorMessage, resultJson.errorCode);
+      console.log('Use MS Translator');
+      var translator = new MsTranslator({
+        client_id : MS_CLIENT_ID,
+        client_secret : MS_CLIENT_SECRET
+      }, true);
+      translator.detect({
+          text : data
+        },
+        /**
+         * @param {Object} error
+         * @param {String} detectedResult
+         */
+        function (error, detectedResult) {
+          if (error) {
+            console.log('Language detect error', error);
           } else {
-            var resultText = resultJson.message.result.translatedText;
-            socket.broadcast.emit('new message', {
-              username : socket.username,
-              message : resultText + '[' + data + ']'
-            });
-            socket.emit('new message', {
-              username : socket.username,
-              message : resultText
+            console.log('Translator detected language : ', detectedResult);
+
+            translator.translate({
+              text : data, from : detectedResult, to : KO_KR
+            }, function (error, translatedResult) {
+              if (error) {
+                console.log('Translate error', error);
+              } else {
+                console.log('Translated result : ', translatedResult);
+                socket.broadcast.emit('new message', {
+                  username : socket.username,
+                  message : translatedResult + ' [ ' + data + ' ]'
+                });
+                socket.emit('new message', {
+                  username : socket.username,
+                  message : '[' + data + ']'
+                });
+              }
             });
           }
         });
-        res.on('error', function (err) {
-          console.log('translate response error', err);
-        });
-      });
-
-      // req error
-      translateRequest.on('error', function (err) {
-        console.log('translate request error', err);
-      });
-
-      translateRequest.write(qs.stringify({source : source, target : target, text : data}));
-      translateRequest.end();
     } else {
+      console.log('no translate', data);
       socket.broadcast.emit('new message', {
         username : socket.username,
         message : data
@@ -103,11 +111,12 @@ io.on('connection', function (socket) {
 
   // when the client emits 'add user', this listens and executes
   socket.on('add user', function (userData) {
-    if (addedUser) return;
+    if (addedUser) {
+      return;
+    }
 
     // we store the username in the socket session for this client
     socket.username = userData.username;
-    socket.userlang = userData.lang;
     ++numUsers;
     addedUser = true;
     socket.emit('login', {

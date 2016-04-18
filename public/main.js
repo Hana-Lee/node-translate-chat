@@ -1,4 +1,21 @@
+/*jslint
+ browser  : true,
+ continue : true,
+ devel    : true,
+ indent   : 2,
+ maxerr   : 50,
+ nomen    : true,
+ plusplus : true,
+ regexp   : true,
+ vars     : true,
+ white    : true,
+ todo     : true,
+ node     : true
+ */
+/*global $, io */
+
 $(function () {
+  'use strict';
   var FADE_TIME = 150; // ms
   var TYPING_TIMER_LENGTH = 400; // ms
   var COLORS = [
@@ -18,7 +35,6 @@ $(function () {
 
   // Prompt for setting a username
   var username;
-  var selectedLang;
   var connected = false;
   var typing = false;
   var lastTypingTime;
@@ -49,12 +65,8 @@ $(function () {
       $currentInput = $inputMessage.focus();
 
       // Tell the server your username
-      socket.emit('add user', {username: username, lang: selectedLang});
+      socket.emit('add user', {username : username});
     }
-  }
-
-  function setLang() {
-    selectedLang = $(':radio[name="lang-choice"]:checked').val();
   }
 
   // Sends a chat message
@@ -209,7 +221,6 @@ $(function () {
         socket.emit('stop typing');
         typing = false;
       } else {
-        setLang();
         setUsername();
       }
     }
