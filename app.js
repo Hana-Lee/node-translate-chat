@@ -94,7 +94,7 @@ io.on('connection', function (socket) {
                 });
                 socket.emit('new message', {
                   username : socket.username,
-                  message : '[' + data + ']'
+                  message : '번역 : [' + translatedResult + ']'
                 });
               }
             });
