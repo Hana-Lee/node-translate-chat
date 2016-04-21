@@ -19,6 +19,66 @@ var express = require('express');
 var app = express();
 var server = require('http').createServer(app);
 var io = require('socket.io')(server);
+var fs = require('fs');
+var Sqlite3 = require('sqlite3').verbose();
+var db = new Sqlite3.Database('translate-chat.db');
+
+var CREATE_USERS_QUERY =
+  'CREATE TABLE if not exists Users(' +
+    'user_id TEXT PRIMARY KEY NOT NULL, ' +
+    'name TEXT NOT NULL, ' +
+    'created TEXT NOT NULL' +
+  ')';
+var CREATE_CHAT_ROOMS_QUERY =
+  'CREATE TABLE if not exists ChatRooms(' +
+    'chat_room_id TEXT PRIMARY KEY NOT NULL, ' +
+    'created TEXT NOT NULL' +
+  ')';
+var CREATE_CHAT_ROOM_SETTINGS_QUERY =
+  'CREATE TABLE if not exists ChatRoomSettings(' +
+    'chat_room_id TEXT NOT NULL, ' +
+    'user_id TEXT NOT NULL, ' +
+    'translate TEXT NOT NULL, ' +
+    'show_picture TEXT NOT NULL' +
+  ')';
+var CREATE_CHAT_ROOM_USERS_QUERY =
+  'CREATE TABLE if not exists ChatRoomUsers(' +
+    'chat_room_id TEXT NOT NULL, ' +
+    'user_id TEXT NOT NULL' +
+  ')';
+var CREATE_CHAT_MESSAGES_QUERY =
+  'CREATE TABLE if not exists ChatMessages(' +
+    'chat_message_id INTEGER PRIMARY KEY AUTOINCREMENT, ' +
+    'chat_room_id TEXT NOT NULL, ' +
+    'user_id TEXT NOT NULL, ' +
+    'o_message TEXT, ' +
+    't_message TEXT, ' +
+    'from_lang_code TEXT, ' +
+    'to_lang_code TEXT, ' +
+    'created TEXT NOT NULL' +
+  ')';
+
+var INSERT_CHAT_MESSGE_QUERY = 'INSERT INTO ChatMessages VALUES (?, ?, ?, ?, ?, ?, ?)';
+var INSERT_USER_QUERY = 'INSERT INTO Users VALUES (?, ?, ?)';
+var INSERT_CHAT_ROOM_QUERY = 'INSERT INTO ChatRooms VALUES (?, ?)';
+var INSERT_CHAT_ROOM_USER_QUERY = 'INSERT INTO ChatRoomUsers VALUES (?, ?)';
+
+var SELECT_ALL_USERS_QUERY = 'SELECT user_id, name, created FROM Users ORDER BY name DESC';
+var SELECT_ALL_CHAT_ROOMS_QUERY = 'SELECT chat_room_id, created FROM ChatRooms ORDER BY created DESC';
+var SELECT_ALL_CHAT_ROOM_USERS_QUERY = 'SELECT chat_room_id, user_id FROM ChatRoomUsers WHERE chat_room_id = ?';
+var SELECT_LAST_MESSAGE_BY_CHAT_ROOM_ID_QUERY =
+  'SELECT message FROM ChatMessages ' +
+  'WHERE chat_room_id = ? AND user_id = ? ORDER BY created DESC LIMIT 1';
+var SELECT_ALL_CHAT_MESSAGES_QUERY =
+  'SELECT chat_room_id, user_id, o_message, t_message, from_code, to_code, created FROM ChatMessages ' +
+  'WHERE chat_room_id = ? ORDER BY created DESC';
+
+var DELETE_USER_BY_ID_QUERY = 'DELETE FROM Users WHERE user_id = ?';
+var DELETE_CHAT_ROOM_BY_ID_QUERY = 'DELETE FROM ChatRooms WHERE chat_room_id = ?';
+var DELETE_CHAT_MESSAGES_BY_CHAT_ROOM_ID_QUERY = 'DELETE FROM ChatMessages WHERE char_room_id = ?';
+var DELETE_CHAT_ROOM_USERS_BY_CHAT_ROOM_ID_QUERY = 'DELETE FROM ChatRoomUsers WHERE chat_room_id = ?';
+var DELETE_CHAT_ROOM_USERS_BY_USER_ID_QUERY = 'DELETE FROM ChatRoomUsers WHERE user_id = ?';
+
 var port = process.env.PORT || 3000;
 // var Translator = require('naver-translator');
 var MsTranslator = require('mstranslator');
@@ -32,7 +92,25 @@ var KO_KR = 'ko';
 var MS_CLIENT_ID = process.env.MS_CLIENT_ID;
 var MS_CLIENT_SECRET = process.env.MS_CLIENT_SECRET;
 
+process.on('SIGINT', function () {
+  server.close(function () {
+    console.log('node server is shut down...');
+    db.close();
+  });
+});
+
+function prepareDatabase() {
+  db.serialize(function () {
+    db.run(CREATE_USERS_QUERY);
+    db.run(CREATE_CHAT_ROOMS_QUERY);
+    db.run(CREATE_CHAT_ROOM_SETTINGS_QUERY);
+    db.run(CREATE_CHAT_ROOM_USERS_QUERY);
+    db.run(CREATE_CHAT_MESSAGES_QUERY);
+  });
+}
+
 server.listen(port, function () {
+  prepareDatabase();
   console.log('Server listening at port %d', port);
 });
 
