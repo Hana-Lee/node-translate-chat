@@ -35,6 +35,8 @@ $(function () {
 
   // Prompt for setting a username
   var username;
+  var userId;
+  var chatRoomId;
   var connected = false;
   var typing = false;
   var lastTypingTime;
@@ -64,8 +66,7 @@ $(function () {
       $loginPage.off('click');
       $currentInput = $inputMessage.focus();
 
-      // Tell the server your username
-      socket.emit('add user', {username : username});
+      socket.emit('createUser', {username : username});
     }
   }
 
@@ -107,7 +108,7 @@ $(function () {
       .text(data.username)
       .css('color', getUsernameColor(data.username));
     var $messageBodyDiv = $('<span class="messageBody">')
-      .text(data.message);
+      .html(data.message);
 
     var typingClass = data.typing ? 'typing' : '';
     var $messageDiv = $('<li class="message"/>')
@@ -243,6 +244,29 @@ $(function () {
   });
 
   // Socket events
+
+  socket.on('createdUser', function (data) {
+    console.log('created user', data);
+    userId = data.user_id;
+
+    socket.emit('retrieveChatRooms', {username : username, user_id : userId});
+  });
+
+  socket.on('createdChatRoom', function (data) {
+    console.log('created chat room', data);
+    chatRoomId = data.chat_room_id;
+    // Tell the server your username
+    socket.emit('joinChatRoom', {username : username, user_id : userId, chat_room_id : chatRoomId});
+  });
+
+  socket.on('retrievedChatRooms', function (data) {
+    console.log('retrieved chat rooms', data);
+    if (data && data.length > 0) {
+      socket.emit('joinChatRoom', {username : username, user_id : userId, chat_room_id : data[0].chat_room_id});
+    } else {
+      socket.emit('createChatRoom', {username : username, user_id : userId});
+    }
+  });
 
   // Whenever the server emits 'login', log the login message
   socket.on('login', function (data) {
