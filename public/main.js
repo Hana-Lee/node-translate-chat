@@ -249,7 +249,7 @@ $(function () {
     console.log('created user', data);
     userId = data.user_id;
 
-    socket.emit('retrieveChatRooms', {username : username, user_id : userId});
+    socket.emit('retrieveAllChatRooms', {username : username, user_id : userId});
   });
 
   socket.on('createdChatRoom', function (data) {
@@ -259,7 +259,7 @@ $(function () {
     socket.emit('joinChatRoom', {username : username, user_id : userId, chat_room_id : chatRoomId});
   });
 
-  socket.on('retrievedChatRooms', function (data) {
+  socket.on('retrievedAllChatRooms', function (data) {
     console.log('retrieved chat rooms', data);
     if (data && data.length > 0) {
       socket.emit('joinChatRoom', {username : username, user_id : userId, chat_room_id : data[0].chat_room_id});

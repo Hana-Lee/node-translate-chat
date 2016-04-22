@@ -40,8 +40,6 @@ var chatObj = {
         var translateAvailable = true;
 
         if (koreanReg.test(data)) {
-          translateAvailable = false;
-
           sqlite3.db.get(
             sqlite3.QUERIES.SELECT_CHAT_ROOM_SETTINGS_BY_CHAT_ROOM_ID_AND_USER_ID,
             [socket.room, socket.user_id],
@@ -73,33 +71,48 @@ var chatObj = {
                                 sqlite3.QUERIES.INSERT_CHAT_MESSGE,
                                 [socket.room, socket.user_id, data, translatedToZhCNResult, 'ko', 'zh-CHS'],
                                 function (err) {
-                                if (err) {
-                                  debug('insert chat message error', err, data);
-                                  throw new Error(err);
-                                } else {
-                                  socket.broadcast.to(socket.room).emit('new message', {
-                                    username : socket.username,
-                                    message : data + '<br />' + translatedToESResult + '<br />' + translatedToZhCNResult
-                                  });
-                                  socket.emit('new message', {
-                                    username : socket.username,
-                                    message : '스페인어 : [' + translatedToESResult + ']<br />중국어 : [' + translatedToZhCNResult + ']'
-                                  });
-                                }
-                              });
+                                  if (err) {
+                                    debug('insert chat message error', err, data);
+                                    throw new Error(err);
+                                  } else {
+                                    socket.broadcast.to(socket.room).emit('new message', {
+                                      username : socket.username,
+                                      message : data + '<br />' + translatedToESResult + '<br />' + translatedToZhCNResult
+                                    });
+                                    socket.emit('new message', {
+                                      username : socket.username,
+                                      message : '스페인어 : [' + translatedToESResult + ']<br />중국어 : [' + translatedToZhCNResult + ']'
+                                    });
+                                  }
+                                });
                             });
                           }
                         }
                       );
                     }
                   });
+                } else {
+                  debug('no translate', data);
+                  sqlite3.db.run(
+                    sqlite3.QUERIES.INSERT_CHAT_MESSGE,
+                    [socket.room, socket.user_id, data, data, 'ko', 'ko'],
+                    function (err) {
+                      if (err) {
+                        debug('insert chat message error', err, data);
+                        throw new Error(err);
+                      } else {
+                        socket.broadcast.to(socket.room).emit('new message', {
+                          username : socket.username,
+                          message : data
+                        });
+                      }
+                    }
+                  );
                 }
               }
             }
           );
-        }
-
-        if (translateAvailable) {
+        } else {
           translator.detect({
               text : data
             },
@@ -143,23 +156,112 @@ var chatObj = {
                 });
               }
             });
-        } else {
-        //   debug('no translate', data);
-        //   sqlite3.db.run(
-        //     sqlite3.QUERIES.INSERT_CHAT_MESSGE, 
-        //     [socket.room, socket.user_id, data, data, 'ko', 'ko'],
-        //     function (err) {
-        //       if (err) {
-        //         debug('insert chat message error', err, data);
-        //         throw new Error(err);
-        //       } else {
-        //         io.in(socket.room).emit('new message', {
-        //           username : socket.username,
-        //           message : data
-        //         });
-        //       }
-        //     }
-        //   );
+        }
+      });
+
+      socket.on('createFriend', function (userData) {
+        sqlite3.db.run(
+          sqlite3.QUERIES.INSERT_FRIEND,
+          [userData.user_id, userData.friend_id],
+          function (err) {
+            if (err) {
+              debug('create friend error', err);
+              throw new Error(err);
+            } else {
+              socket.emit('createdFriend', userData);
+            }
+          }
+        );
+      });
+
+      socket.on('retrieveAllFriends', function (userData) {
+        sqlite3.db.all(
+          sqlite3.QUERIES.SELECT_ALL_FRIENDS_BY_USER_ID,
+          [userData.user_id],
+          function (err, rows) {
+            if (err) {
+              debug('retrieve all friend error', err);
+              throw new Error(err);
+            } else {
+              socket.emit('retrievedAllFriends', rows);
+            }
+          }
+        );
+      });
+
+      socket.on('retrieveAllUsers', function () {
+        sqlite3.db.all(
+          sqlite3.QUERIES.SELECT_ALL_USERS,
+          function (err, rows) {
+            if (err) {
+              debug('retrieve all users error', err);
+              throw new Error(err);
+            } else {
+              socket.emit('retrievedAllUsers', rows);
+            }
+          }
+        );
+      });
+
+      socket.on('retrieveAllChatRoomIds', function (userData) {
+        sqlite3.db.all(
+          sqlite3.QUERIES.SELECT_ALL_CHAT_ROOM_IDS_BY_USER_ID,
+          [userData.user_id],
+          function (err, rows) {
+            if (err) {
+              debug('retrieve all chat rooms error', err);
+              throw new Error(err);
+            } else {
+              socket.emit('retrievedAllChatRoomIds', rows);
+            }
+          }
+        );
+      });
+
+      socket.on('retrieveAllChatRoomLastMessages', function (userData) {
+        sqlite3.db.all(
+          sqlite3.QUERIES.SELECT_ALL_LAST_MESSAGE_BY_CHAT_ROOM_ID_AND_USER_ID,
+          {0 : userData.user_id, $room_ids : '\'' + userData.chat_room_ids.join('\',\'') + '\''},
+          function (err, rows) {
+            if (err) {
+              debug('select last message error', err);
+              throw new Error(err);
+            } else {
+              socket.emit('retrievedAllChatRoomLastMessages', rows);
+            }
+          }
+        );
+      });
+
+      socket.on('updateChatRoomSettings', function (userData) {
+        if (userData.translate_ko) {
+          sqlite3.db.run(
+            sqlite3.QUERIES.UPDATE_CHAT_ROOM_SETTINGS_SET_TRANSLATE_KO_BY_CHAT_ROOM_ID_AND_USER_ID,
+            [userData.translate_ko, userData.chat_room_id, userData.user_id],
+            function (err) {
+              if (err) {
+                debug('update chat room settings error', err);
+                throw new Error(err);
+              } else {
+                socket.emit('updatedChatRoomSettingsTranslateKo', userData);
+              }
+            }
+          );
+        }
+
+        if (userData.show_picture) {
+          sqlite3.db.run(
+            sqlite3.QUERIES.UPDATE_CHAT_ROOM_SETTINGS_SET_SHOW_PICTURE_BY_CHAT_ROOM_ID_AND_USER_ID,
+            [userData.show_picture, userData.chat_room_id, userData.user_id],
+            function (err) {
+              if (err) {
+                debug('update chat room settings error', err);
+                throw new Error(err);
+              } else {
+                socket.emit('updatedChatRoomSettingsShowPicture', userData);
+              }
+            }
+          );
         }
       });
 
@@ -167,13 +269,16 @@ var chatObj = {
         var user_id = createUID('user_id');
         userData.user_id = user_id;
         socket.user_id = user_id;
-        sqlite3.db.run(sqlite3.QUERIES.INSERT_USER, [user_id, userData.username], function (err) {
-          if (err) {
-            debug('insert user error', err, userData);
-            throw new Error(err);
-          } else {
-            socket.emit('createdUser', userData);
-          }
+
+        sqlite3.db.serialize(function () {
+          sqlite3.db.run(sqlite3.QUERIES.INSERT_USER, [user_id, userData.username], function (err) {
+            if (err) {
+              debug('insert user error', err, userData);
+              throw new Error(err);
+            } else {
+              socket.emit('createdUser', userData);
+            }
+          });
         });
       });
 
@@ -181,7 +286,7 @@ var chatObj = {
         var chat_room_id = createUID('chat_room_id');
         dummyChatRoomId = chat_room_id;
         userData.chat_room_id = chat_room_id;
-        sqlite3.db.serialize();
+
         sqlite3.db.run(sqlite3.QUERIES.INSERT_CHAT_ROOM, [chat_room_id], function (err) {
           if (err) {
             debug('insert chat room error', err);
@@ -192,14 +297,17 @@ var chatObj = {
         });
       });
 
-      socket.on('retrieveChatRooms', function (userData) {
-        sqlite3.db.all(sqlite3.QUERIES.SELECT_ALL_CHAT_ROOMS, function (err, rows) {
-          if (err) {
-            debug('select all chat rooms error', err, userData);
-          } else {
-            socket.emit('retrievedChatRooms', rows);
+      socket.on('retrieveAllChatRooms', function (userData) {
+        sqlite3.db.all(
+          sqlite3.QUERIES.SELECT_ALL_CHAT_ROOMS,
+          function (err, rows) {
+            if (err) {
+              debug('select all chat rooms error', err, userData);
+            } else {
+              socket.emit('retrievedAllChatRooms', rows);
+            }
           }
-        });
+        );
       });
 
       socket.on('retrieveChatRoomIdByUserAndToUserId', function (userData) {
@@ -227,7 +335,29 @@ var chatObj = {
           userData.chat_room_id = dummyChatRoomId
         }
 
-        sqlite3.db.serialize(function () {
+        sqlite3.db.parallelize(function () {
+          sqlite3.db.get(
+            sqlite3.QUERIES.SELECT_CHAT_ROOM_SETTINGS_BY_CHAT_ROOM_ID_AND_USER_ID,
+            [userData.chat_room_id, userData.user_id],
+            function (err, row) {
+              if (err) {
+                debug('select chat room settings error', err);
+                throw new Error(err);
+              } else if (!row) {
+                sqlite3.db.run(
+                  sqlite3.QUERIES.INSERT_CHAT_ROOM_SETTINGS,
+                  [userData.chat_room_id, userData.user_id, 0, 0],
+                  function (err) {
+                    if (err) {
+                      debug('insert chat room settings error', err);
+                      throw new Error(err);
+                    }
+                  }
+                );
+              }
+            }
+          );
+
           sqlite3.db.get(
             sqlite3.QUERIES.SELECT_CHAT_ROOM_ID_BY_USER_ID,
             [userData.user_id],
