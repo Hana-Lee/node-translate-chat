@@ -11,8 +11,9 @@ QUERIES.CREATE_USERS =
   'CREATE TABLE IF NOT EXISTS Users(' +
     'user_id VARCHAR(255) NOT NULL, ' +
     'user_name VARCHAR(255) NOT NULL, ' +
+    'device_id VARCHAR(512) NOT NULL, ' +
     'created TIMESTAMP NOT NULL DEFAULT (STRFTIME(\'%s\', \'now\') || \'000\'), ' +
-    'PRIMARY KEY(user_id, user_name)' +
+    'PRIMARY KEY(device_id)' +
   ')';
 QUERIES.CREATE_FRIENDS =
   'CREATE TABLE IF NOT EXISTS Friends(' +
@@ -61,7 +62,7 @@ QUERIES.CREATE_COMPLEX_INDEX3_CHAT_MESSAGES = 'CREATE INDEX IF NOT EXISTS cmidx0
 QUERIES.INSERT_CHAT_MESSGE = 'INSERT INTO ChatMessages (' +
     'chat_room_id, user_id, o_message, t_message, from_lang_code, to_lang_code' +
   ') VALUES (?, ?, ?, ?, ?, ?)';
-QUERIES.INSERT_USER = 'INSERT INTO Users (user_id, user_name) VALUES (?, ?)';
+QUERIES.INSERT_USER = 'INSERT INTO Users (user_id, user_name, device_id) VALUES (?, ?, ?)';
 QUERIES.INSERT_FRIEND = 'INSERT INTO Friends (user_id, friend_id) VALUES (?, ?)';
 QUERIES.INSERT_CHAT_ROOM = 'INSERT INTO ChatRooms (chat_room_id) VALUES (?)';
 QUERIES.INSERT_CHAT_ROOM_USER = 'INSERT INTO ChatRoomUsers (chat_room_id, user_id) VALUES (?, ?)';
@@ -78,7 +79,12 @@ QUERIES.UPDATE_CHAT_ROOM_SETTINGS_SET_SHOW_PICTURE_BY_CHAT_ROOM_ID_AND_USER_ID =
   'WHERE chat_room_id = ? AND user_id = ?';
 QUERIES.UPDATE_USERS_SET_USER_NAME_BY_USER_ID = 'UPDATE Users SET user_name = ? WHERE user_id = ?';
 
-QUERIES.SELECT_ALL_USERS = 'SELECT user_id, user_name, created FROM Users ORDER BY user_name DESC';
+QUERIES.SELECT_USER_BY_USER_NAME =
+  'SELECT user_id, user_name, device_id, created FROM Users WHERE user_name = ?';
+QUERIES.SELECT_USER_BY_DEVICE_ID =
+  'SELECT user_id, user_name, device_id, created FROM Users WHERE device_id = ?';
+QUERIES.SELECT_ALL_USERS =
+  'SELECT user_id, user_name, device_id, created FROM Users ORDER BY user_name DESC';
 QUERIES.SELECT_ALL_FRIENDS_BY_USER_ID =
   'SELECT u.user_id, u.user_name, f.created FROM Friends AS f ' +
   'JOIN Users AS u ON f.friend_id = u.user_id ' +

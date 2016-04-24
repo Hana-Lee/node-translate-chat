@@ -174,6 +174,28 @@ var chatObj = {
         );
       });
 
+      socket.on('retrieveAlreadyRegisteredUserByDeviceId', function (userData) {
+        sqlite3.db.get(sqlite3.QUERIES.SELECT_USER_BY_DEVICE_ID, [userData.device_id], function (err, row) {
+          if (err) {
+            debug('retrieveAlreadyRegisteredUserByDeviceId error', err);
+            throw new Error(err);
+          } else {
+            socket.emit('retrievedAlreadyRegisteredUserByDeviceId', row);
+          }
+        });
+      });
+
+      socket.on('retrieveAlreadyRegisteredUserByUserName', function (userData) {
+        sqlite3.db.get(sqlite3.QUERIES.SELECT_USER_BY_DEVICE_ID, [userData.username], function (err, row) {
+          if (err) {
+            debug('retrieveAlreadyRegisteredUserByUserName error', err);
+            throw new Error(err);
+          } else {
+            socket.emit('retrievedAlreadyRegisteredUserByUserName', row);
+          }
+        });
+      });
+
       socket.on('retrieveAllFriends', function (userData) {
         sqlite3.db.all(
           sqlite3.QUERIES.SELECT_ALL_FRIENDS_BY_USER_ID,
@@ -270,15 +292,19 @@ var chatObj = {
         userData.user_id = user_id;
         socket.user_id = user_id;
 
-        sqlite3.db.serialize(function () {
-          sqlite3.db.run(sqlite3.QUERIES.INSERT_USER, [user_id, userData.username], function (err) {
-            if (err) {
-              debug('insert user error', err, userData);
-              throw new Error(err);
-            } else {
-              socket.emit('createdUser', userData);
+        sqlite3.db.parallelize(function () {
+          sqlite3.db.run(
+            sqlite3.QUERIES.INSERT_USER,
+            [user_id, userData.username, userData.device_id],
+            function (err) {
+              if (err) {
+                debug('insert user error', err, userData);
+                throw new Error(err);
+              } else {
+                socket.emit('createdUser', userData);
+              }
             }
-          });
+          );
         });
       });
 

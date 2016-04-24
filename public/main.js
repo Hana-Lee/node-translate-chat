@@ -66,7 +66,7 @@ $(function () {
       $loginPage.off('click');
       $currentInput = $inputMessage.focus();
 
-      socket.emit('createUser', {username : username});
+      socket.emit('createUser', {username : username, device_id : 'test'});
     }
   }
 
