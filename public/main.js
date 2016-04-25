@@ -269,14 +269,18 @@ $(function () {
   });
 
   // Whenever the server emits 'login', log the login message
-  socket.on('login', function (data) {
-    connected = true;
-    // Display the welcome message
-    var message = "채팅에 오신걸 환영합니다 ( 聊天中,欢迎光临! ) – ";
-    log(message, {
-      prepend : true
-    });
-    addParticipantsMessage(data);
+  socket.on('joinedChatRoom', function (data) {
+    if (data.error) {
+      console.error('join chat room error : ', data.error);
+    } else {
+      connected = true;
+      // Display the welcome message
+      var message = "채팅에 오신걸 환영합니다 ( 聊天中,欢迎光临! ) – ";
+      log(message, {
+        prepend : true
+      });
+      addParticipantsMessage(data);
+    }
   });
 
   // Whenever the server emits 'new message', update the chat body
