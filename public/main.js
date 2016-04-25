@@ -26,7 +26,7 @@ $(function () {
 
   // Initialize variables
   var $window = $(window);
-  var $usernameInput = $('.usernameInput'); // Input for username
+  var $userNameInput = $('.userNameInput'); // Input for username
   var $messages = $('.messages'); // Messages area
   var $inputMessage = $('.inputMessage'); // Input message input box
 
@@ -34,39 +34,39 @@ $(function () {
   var $chatPage = $('.chat.page'); // The chatroom page
 
   // Prompt for setting a username
-  var username;
+  var userName;
   var userId;
   var chatRoomId;
   var connected = false;
   var typing = false;
   var lastTypingTime;
-  var $currentInput = $usernameInput.focus();
+  var $currentInput = $userNameInput.focus();
 
   // var socket = io.connect('http://node-translate-chat.herokuapp.com/');
   var socket = io();
 
   function addParticipantsMessage(data) {
     var message = '';
-    if (data.numUsers === 1) {
+    if (data.num_users === 1) {
       message += "there's 1 participant";
     } else {
-      message += "there are " + data.numUsers + " participants";
+      message += "there are " + data.num_users + " participants";
     }
     log(message);
   }
 
   // Sets the client's username
-  function setUsername() {
-    username = cleanInput($usernameInput.val().trim());
+  function setUserName() {
+    userName = cleanInput($userNameInput.val().trim());
 
     // If the username is valid
-    if (username) {
+    if (userName) {
       $loginPage.fadeOut();
       $chatPage.show();
       $loginPage.off('click');
       $currentInput = $inputMessage.focus();
 
-      socket.emit('createUser', {username : username, device_id : 'test'});
+      socket.emit('createUser', {user_name : userName, device_id : 'test'});
     }
   }
 
@@ -79,7 +79,7 @@ $(function () {
     if (message && connected) {
       $inputMessage.val('');
       addChatMessage({
-        username : username,
+        user_name : userName,
         message : message
       });
 
@@ -104,17 +104,17 @@ $(function () {
       $typingMessages.remove();
     }
 
-    var $usernameDiv = $('<span class="username"/>')
-      .text(data.username)
-      .css('color', getUsernameColor(data.username));
+    var $userNameDiv = $('<span class="userName"/>')
+      .text(data.user_name)
+      .css('color', getUsernameColor(data.user_name));
     var $messageBodyDiv = $('<span class="messageBody">')
       .html(data.message);
 
     var typingClass = data.typing ? 'typing' : '';
     var $messageDiv = $('<li class="message"/>')
-      .data('username', data.username)
+      .data('user_name', data.user_name)
       .addClass(typingClass)
-      .append($usernameDiv, $messageBodyDiv);
+      .append($userNameDiv, $messageBodyDiv);
 
     addMessageElement($messageDiv, options);
   }
@@ -192,16 +192,16 @@ $(function () {
   // Gets the 'X is typing' messages of a user
   function getTypingMessages(data) {
     return $('.typing.message').filter(function (i) {
-      return $(this).data('username') === data.username;
+      return $(this).data('user_name') === data.user_name;
     });
   }
 
   // Gets the color of a username through our hash function
-  function getUsernameColor(username) {
+  function getUsernameColor(userName) {
     // Compute hash code
     var hash = 7;
-    for (var i = 0; i < username.length; i++) {
-      hash = username.charCodeAt(i) + (hash << 5) - hash;
+    for (var i = 0; i < userName.length; i++) {
+      hash = userName.charCodeAt(i) + (hash << 5) - hash;
     }
     // Calculate color
     var index = Math.abs(hash % COLORS.length);
@@ -217,12 +217,12 @@ $(function () {
     }
     // When the client hits ENTER on their keyboard
     if (event.which === 13) {
-      if (username) {
+      if (userName) {
         sendMessage();
         socket.emit('stop typing');
         typing = false;
       } else {
-        setUsername();
+        setUserName();
       }
     }
   });
@@ -249,22 +249,22 @@ $(function () {
     console.log('created user', data);
     userId = data.user_id;
 
-    socket.emit('retrieveAllChatRooms', {username : username, user_id : userId});
+    socket.emit('retrieveAllChatRooms', {user_name : userName, user_id : userId});
   });
 
   socket.on('createdChatRoom', function (data) {
     console.log('created chat room', data);
     chatRoomId = data.chat_room_id;
     // Tell the server your username
-    socket.emit('joinChatRoom', {username : username, user_id : userId, chat_room_id : chatRoomId});
+    socket.emit('joinChatRoom', {user_name : userName, user_id : userId, chat_room_id : chatRoomId});
   });
 
   socket.on('retrievedAllChatRooms', function (data) {
     console.log('retrieved chat rooms', data);
     if (data && data.length > 0) {
-      socket.emit('joinChatRoom', {username : username, user_id : userId, chat_room_id : data[0].chat_room_id});
+      socket.emit('joinChatRoom', {user_name : userName, user_id : userId, chat_room_id : data[0].chat_room_id});
     } else {
-      socket.emit('createChatRoom', {username : username, user_id : userId});
+      socket.emit('createChatRoom', {user_name : userName, user_id : userId});
     }
   });
 
@@ -286,13 +286,13 @@ $(function () {
 
   // Whenever the server emits 'user joined', log it in the chat body
   socket.on('user joined', function (data) {
-    log(data.username + ' joined');
+    log(data.user_name + ' joined');
     addParticipantsMessage(data);
   });
 
   // Whenever the server emits 'user left', log it in the chat body
   socket.on('user left', function (data) {
-    log(data.username + ' left');
+    log(data.user_name + ' left');
     addParticipantsMessage(data);
     removeChatTyping(data);
   });

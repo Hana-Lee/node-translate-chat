@@ -6,6 +6,9 @@
 
 var socketIO = require('socket.io');
 var translator = require('./translator');
+/**
+ * @param {Function} db.parallelize
+ */
 var sqlite3 = require('./sqlite3');
 var debug = require('debug')('node-translate-chat:chat');
 var md5 = require('md5');
@@ -22,12 +25,25 @@ function createUID(value) {
   return md5(_seed + value);
 }
 
+/**
+ * @typedef {Object} UserData
+ * @type {UserData}
+ * @param {String} friend_id
+ * @param {String} chat_room_id
+ * @param {String[]} chat_room_ids
+ * @param {Boolean} show_picture
+ * @param {String} to_user_id
+ */
+var userData = {
+  friend_id : null, chat_room_id : null, chat_room_ids : null, show_picture : false, to_user_id : null
+};
+
 var chatObj = {
   connect : function (server) {
     var io = socketIO.listen(server, null);
     var numUsers = 0;
 
-    io.on('connection', function (socket) {
+    io.on('connection', function (/** @param {Object} socket.broadcast */socket) {
       debug('socket connection');
       var addedUser = false;
 
@@ -36,14 +52,12 @@ var chatObj = {
         // we tell the client to execute 'new message'
         debug('new message : ', socket.id);
         var koreanReg = /[가-힣]/g;
-        // var chineseReg = /[\u4e00-\u9fa5]*/g;
-        var translateAvailable = true;
 
         if (koreanReg.test(data)) {
           sqlite3.db.get(
             sqlite3.QUERIES.SELECT_CHAT_ROOM_SETTINGS_BY_CHAT_ROOM_ID_AND_USER_ID,
             [socket.room, socket.user_id],
-            function (err, row) {
+            function (err, /** @param {Number} row.translate_ko */row) {
               if (err) {
                 debug('select chat room settings error', err);
                 throw new Error(err);
@@ -76,11 +90,11 @@ var chatObj = {
                                     throw new Error(err);
                                   } else {
                                     socket.broadcast.to(socket.room).emit('new message', {
-                                      username : socket.username,
+                                      user_name : socket.user_name,
                                       message : data + '<br />' + translatedToESResult + '<br />' + translatedToZhCNResult
                                     });
                                     socket.emit('new message', {
-                                      username : socket.username,
+                                      user_name : socket.user_name,
                                       message : '스페인어 : [' + translatedToESResult + ']<br />중국어 : [' + translatedToZhCNResult + ']'
                                     });
                                   }
@@ -102,7 +116,7 @@ var chatObj = {
                         throw new Error(err);
                       } else {
                         socket.broadcast.to(socket.room).emit('new message', {
-                          username : socket.username,
+                          user_name : socket.user_name,
                           message : data
                         });
                       }
@@ -142,11 +156,11 @@ var chatObj = {
                           throw new Error(err);
                         } else {
                           socket.broadcast.to(socket.room).emit('new message', {
-                            username : socket.username,
+                            user_name : socket.user_name,
                             message : translatedResult + ' [ ' + data + ' ]'
                           });
                           socket.emit('new message', {
-                            username : socket.username,
+                            user_name : socket.user_name,
                             message : '번역 : [' + translatedResult + ']'
                           });
                         }
@@ -159,7 +173,7 @@ var chatObj = {
         }
       });
 
-      socket.on('createFriend', function (userData) {
+      socket.on('createFriend', function (/** @param {String} userData.friend_id */userData) {
         sqlite3.db.run(
           sqlite3.QUERIES.INSERT_FRIEND,
           [userData.user_id, userData.friend_id],
@@ -186,7 +200,7 @@ var chatObj = {
       });
 
       socket.on('retrieveAlreadyRegisteredUserByUserName', function (userData) {
-        sqlite3.db.get(sqlite3.QUERIES.SELECT_USER_BY_DEVICE_ID, [userData.username], function (err, row) {
+        sqlite3.db.get(sqlite3.QUERIES.SELECT_USER_BY_DEVICE_ID, [userData.user_name], function (err, row) {
           if (err) {
             debug('retrieveAlreadyRegisteredUserByUserName error', err);
             throw new Error(err);
@@ -292,20 +306,18 @@ var chatObj = {
         userData.user_id = user_id;
         socket.user_id = user_id;
 
-        sqlite3.db.parallelize(function () {
-          sqlite3.db.run(
-            sqlite3.QUERIES.INSERT_USER,
-            [user_id, userData.username, userData.device_id],
-            function (err) {
-              if (err) {
-                debug('insert user error', err, userData);
-                throw new Error(err);
-              } else {
-                socket.emit('createdUser', userData);
-              }
+        sqlite3.db.run(
+          sqlite3.QUERIES.INSERT_USER,
+          [user_id, userData.user_name, userData.device_id],
+          function (err) {
+            if (err) {
+              debug('insert user error', err, userData);
+              throw new Error(err);
+            } else {
+              socket.emit('createdUser', userData);
             }
-          );
-        });
+          }
+        );
       });
 
       socket.on('createChatRoom', function (userData) {
@@ -361,7 +373,7 @@ var chatObj = {
           userData.chat_room_id = dummyChatRoomId
         }
 
-        sqlite3.db.parallelize(function () {
+        sqlite3.db.serialize(function () {
           sqlite3.db.get(
             sqlite3.QUERIES.SELECT_CHAT_ROOM_SETTINGS_BY_CHAT_ROOM_ID_AND_USER_ID,
             [userData.chat_room_id, userData.user_id],
@@ -426,8 +438,8 @@ var chatObj = {
 
         debug('add user ', userData);
 
-        // we store the username in the socket session for this client
-        socket.username = userData.username;
+        // we store the user_name in the socket session for this client
+        socket.user_name = userData.user_name;
         ++numUsers;
         addedUser = true;
         socket.emit('login', {
@@ -435,7 +447,7 @@ var chatObj = {
         });
         // echo globally (all clients) that a person has connected
         io.in(userData.chat_room_id).emit('user joined', {
-          username : socket.username,
+          user_name : socket.user_name,
           numUsers : numUsers
         });
       });
@@ -443,14 +455,14 @@ var chatObj = {
       // when the client emits 'typing', we broadcast it to others
       socket.on('typing', function () {
         socket.broadcast.emit('typing', {
-          username : socket.username
+          user_name : socket.user_name
         });
       });
 
       // when the client emits 'stop typing', we broadcast it to others
       socket.on('stop typing', function () {
         socket.broadcast.emit('stop typing', {
-          username : socket.username
+          user_name : socket.user_name
         });
       });
 
@@ -461,8 +473,8 @@ var chatObj = {
 
           // echo globally that this client has left
           socket.broadcast.emit('user left', {
-            username : socket.username,
-            numUsers : numUsers
+            user_name : socket.user_name,
+            num_users : numUsers
           });
         }
       });

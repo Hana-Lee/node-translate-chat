@@ -61,7 +61,7 @@ ul {
 	width: 100%;
 }
 
-.login.page .form .usernameInput {
+.login.page .form .userNameInput {
 	background-color: transparent;
 	border: none;
 	border-bottom: 2px solid #fff;
@@ -75,12 +75,12 @@ ul {
 	font-size: 200%;
 }
 
-.login.page .usernameInput {
+.login.page .userNameInput {
 	font-size: 200%;
 	letter-spacing: 3px;
 }
 
-.form label, .login.page .title, .login.page .usernameInput {
+.form label, .login.page .title, .login.page .userNameInput {
 	color: #fff;
 	font-weight: 100;
 }
@@ -126,7 +126,7 @@ ul {
 	color: gray;
 }
 
-.username {
+.userName {
 	font-weight: 700;
 	overflow: hidden;
 	padding-right: 15px;
