@@ -31,6 +31,7 @@ function createUID(value) {
  * @param {String} friend_id
  * @param {String} chat_room_id
  * @param {String[]} chat_room_ids
+ * @param {String} user_face
  * @param {Boolean} show_picture
  * @param {String} to_user_id
  * @param {String} device_id
@@ -40,7 +41,7 @@ function createUID(value) {
  * @param {Object} friend
  */
 var userData = {
-  friend_id : null, chat_room_id : null, chat_room_ids : null,
+  friend_id : null, chat_room_id : null, chat_room_ids : null, user_face : null,
   show_picture : false, to_user_id : null, device_id : null,
   device_type : null, device_version : null, user : null, friend : { socket_id : null, user_id : null}
 };
@@ -61,8 +62,8 @@ var chatObj = {
             if (err) {
               debug('select user by handshake device id error', err);
             } else if (row) {
+              debug('update user socket.id', row);
               var socketId = socket.id;
-              // var socketId = socket.id.replace('/', '');
               sqlite3.db.run(sqlite3.QUERIES.UPDATE_USERS_SET_SOCKET_ID_BY_USER_ID, [socketId, row.user_id], function (err) {
                 if (err) {
                   debug('update users set socket error', err);
@@ -299,6 +300,7 @@ var chatObj = {
       });
 
       socket.on('retrieveAllUsers', function () {
+        debug('retrieve all users', socket.id);
         sqlite3.db.all(
           sqlite3.QUERIES.SELECT_ALL_USERS,
           function (err, rows) {
@@ -306,6 +308,7 @@ var chatObj = {
               debug('retrieve all users error', err);
               socket.emit('retrievedAllUsers', {error : err, process : 'retrieveAllUsers'});
             } else {
+              debug('retrieved all users', rows);
               socket.emit('retrievedAllUsers', {result : rows});
             }
           }
@@ -389,11 +392,13 @@ var chatObj = {
         socket.user_id = user_id;
 
         var socketId = socket.id;
-        // var socketId = socket.id.replace('/', '');
         userData.socket_id = socketId;
         sqlite3.db.run(
           sqlite3.QUERIES.INSERT_USER,
-          [user_id, userData.user_name, userData.device_id, userData.device_type, userData.device_version, socketId],
+          [
+            user_id, userData.user_name, userData.user_face, userData.device_id,
+            userData.device_type, userData.device_version, socketId
+          ],
           function (err) {
             if (err) {
               debug('insert user error', err, userData);

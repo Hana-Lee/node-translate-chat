@@ -11,7 +11,7 @@ QUERIES.CREATE_USERS =
   'CREATE TABLE IF NOT EXISTS Users(' +
     'user_id VARCHAR(255) NOT NULL, ' +
     'user_name VARCHAR(255) NOT NULL, ' +
-    'user_face VARCHAR(255) NOT NULL DEFAULT \'img/sarah.pn\' , ' +
+    'user_face VARCHAR(255) NOT NULL DEFAULT \'img/sarah.png\' , ' +
     'device_id VARCHAR(512) NOT NULL, ' +
     'device_type VARCHAR(512) NOT NULL, ' +
     'device_version VARCHAR(512) NOT NULL, ' +
@@ -70,8 +70,8 @@ QUERIES.INSERT_CHAT_MESSGE = 'INSERT INTO ChatMessages (' +
   ') VALUES (?, ?, ?, ?, ?, ?, 0)';
 QUERIES.INSERT_USER =
   'INSERT INTO Users ' +
-  '(user_id, user_name, device_id, device_type, device_version, socket_id) ' +
-  'VALUES (?, ?, ?, ?, ?, ?)';
+  '(user_id, user_name, user_face, device_id, device_type, device_version, socket_id) ' +
+  'VALUES (?, ?, ?, ?, ?, ?, ?)';
 QUERIES.INSERT_FRIEND = 'INSERT INTO Friends (user_id, friend_id) VALUES (?, ?)';
 QUERIES.INSERT_CHAT_ROOM = 'INSERT INTO ChatRooms (chat_room_id) VALUES (?)';
 QUERIES.INSERT_CHAT_ROOM_USER = 'INSERT INTO ChatRoomUsers (chat_room_id, user_id) VALUES (?, ?)';
@@ -92,19 +92,19 @@ QUERIES.UPDATE_CHAT_MESSAGE_BY_CHAT_MESSAG_ID =
 
 QUERIES.UPDATE_USERS_SET_SOCKET_ID_BY_USER_ID = 'UPDATE Users SET socket_id = ? WHERE user_id = ?';
 QUERIES.SELECT_USER_BY_USER_ID =
-  'SELECT user_id, user_name, device_id, device_type, device_version, socket_id, created ' +
+  'SELECT user_id, user_name, user_face, device_id, device_type, device_version, socket_id, created ' +
   'FROM Users WHERE user_id = ?';
 QUERIES.SELECT_USER_BY_USER_NAME =
-  'SELECT user_id, user_name, device_id, device_type, device_version, socket_id, created ' +
+  'SELECT user_id, user_name, user_face, device_id, device_type, device_version, socket_id, created ' +
   'FROM Users WHERE user_name = ?';
 QUERIES.SELECT_USER_BY_DEVICE_ID =
-  'SELECT user_id, user_name, device_id, device_type, device_version, socket_id, created ' +
+  'SELECT user_id, user_name, user_face, device_id, device_type, device_version, socket_id, created ' +
   'FROM Users WHERE device_id = ?';
 QUERIES.SELECT_ALL_USERS =
-  'SELECT user_id, user_name, device_id, device_type, device_version, socket_id, created ' +
+  'SELECT user_id, user_name, user_face, device_id, device_type, device_version, socket_id, created ' +
   'FROM Users ORDER BY user_name DESC';
 QUERIES.SELECT_ALL_FRIENDS_BY_USER_ID =
-  'SELECT u.user_id, u.user_name, u.device_id, u.device_type, u.device_version, u.socket_id, f.created ' +
+  'SELECT u.user_id, u.user_name, u.user_face, u.device_id, u.device_type, u.device_version, u.socket_id, f.created ' +
   'FROM Friends AS f ' +
   'JOIN Users AS u ON f.friend_id = u.user_id ' +
   'WHERE f.user_id = ? ' +
