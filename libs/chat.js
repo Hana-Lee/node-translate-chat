@@ -43,7 +43,7 @@ function createUID(value) {
 var userData = {
   friend_id : null, chat_room_id : null, chat_room_ids : null, user_face : null,
   show_picture : false, to_user_id : null, device_id : null, connection_time : null,
-  device_type : null, device_version : null, user : null, friend : { socket_id : null, user_id : null}
+  device_type : null, device_version : null, user : null, friend : {socket_id : null, user_id : null}
 };
 
 var chatObj = {
@@ -394,7 +394,7 @@ var chatObj = {
           );
         }
       });
-      
+
       socket.on('createUser', function (userData) {
         var user_id = createUID('user_id');
         userData.user_id = user_id;
@@ -421,25 +421,25 @@ var chatObj = {
           }
         );
       });
-      
-      socket.on('createChatRoom', function (userData) {
-        var chat_room_id = createUID('chat_room_id');
-        dummyChatRoomId = chat_room_id;
-        userData.chat_room_id = chat_room_id;
 
-        sqlite3.db.run(sqlite3.QUERIES.INSERT_CHAT_ROOM, [chat_room_id], function (err) {
+      socket.on('createChatRoom', function () {
+        var chatRoomId = createUID('chat_room_id');
+        dummyChatRoomId = chatRoomId;
+
+        sqlite3.db.run(sqlite3.QUERIES.INSERT_CHAT_ROOM, [chatRoomId], function (err) {
           if (err) {
             debug('insert chat room error : ', err);
             socket.emit('createdChatRoom', {error : err, process : 'createdChatRoom'});
           } else {
-            socket.emit('createdChatRoom', {result : userData});
+            socket.emit('createdChatRoom', {result : {chat_room_id : chatRoomId}});
           }
         });
       });
 
       socket.on('retrieveAllChatRooms', function (userData) {
         sqlite3.db.all(
-          sqlite3.QUERIES.SELECT_ALL_CHAT_ROOMS,
+          sqlite3.QUERIES.SELECT_ALL_CHAT_ROOMS_BY_USER_ID,
+          [userData.user_id],
           function (err, rows) {
             if (err) {
               debug('select all chat rooms error : ', err, userData);
@@ -451,7 +451,7 @@ var chatObj = {
         );
       });
 
-      socket.on('retrieveChatRoomIdByUserAndToUserId', function (userData) {
+      socket.on('retrieveChatRoomIdByUserIdAndToUserId', function (userData) {
         sqlite3.db.get(
           sqlite3.QUERIES.SELECT_CHAT_ROOM_ID_BY_USER_ID_AND_TO_USER_ID,
           [userData.user_id, userData.to_user_id],

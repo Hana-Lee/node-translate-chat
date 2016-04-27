@@ -130,8 +130,8 @@ QUERIES.SELECT_ALL_FRIENDS_BY_USER_ID =
   'JOIN Users AS u ON f.friend_id = u.user_id ' +
   'WHERE f.user_id = ? ' +
   'ORDER BY u.user_name DESC';
-QUERIES.SELECT_ALL_CHAT_ROOMS = 'SELECT * FROM ChatRooms';
-QUERIES.SELECT_ALL_CHAT_ROOM_IDS_BY_USER_ID = 
+QUERIES.SELECT_ALL_CHAT_ROOMS_BY_USER_ID = 'SELECT * FROM ChatRooms WHERE user_id = ?';
+QUERIES.SELECT_ALL_CHAT_ROOM_IDS_BY_USER_ID =
   'SELECT chat_room_id FROM ChatRoomUsers WHERE user_id = ? ORDER BY created DESC';
 QUERIES.SELECT_ALL_CHAT_ROOM_USERS_BY_CHAT_ROOM_ID = 
   'SELECT chat_room_id, user_id FROM ChatRoomUsers WHERE chat_room_id = ?';
@@ -144,7 +144,7 @@ QUERIES.SELECT_ALL_LAST_MESSAGE_BY_CHAT_ROOM_ID_AND_USER_ID =
   'SELECT MAX(created) AS max, ' +
   'o_message, t_message, from_lang_code, to_lang_code, read, read_time, created ' +
   'FROM ChatMessages ' +
-  'WHERE user_id = ? chat_room_id in ($room_ids) ' +
+  'WHERE user_id = ? AND chat_room_id in ($room_ids) ' +
   'GROUP BY chat_room_id ORDER BY created DESC';
 QUERIES.SELECT_ALL_CHAT_MESSAGES_BY_CHAT_ROOM_ID =
   'SELECT ' +
