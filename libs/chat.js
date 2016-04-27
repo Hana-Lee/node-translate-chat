@@ -42,7 +42,7 @@ function createUID(value) {
  */
 var userData = {
   friend_id : null, chat_room_id : null, chat_room_ids : null, user_face : null,
-  show_picture : false, to_user_id : null, device_id : null,
+  show_picture : false, to_user_id : null, device_id : null, connection_time : null,
   device_type : null, device_version : null, user : null, friend : { socket_id : null, user_id : null}
 };
 
@@ -60,14 +60,23 @@ var chatObj = {
         sqlite3.db.serialize(function () {
           sqlite3.db.get(sqlite3.QUERIES.SELECT_USER_BY_DEVICE_ID, [deviceId], function (err, row) {
             if (err) {
-              debug('select user by handshake device id error', err);
+              debug('select user by handshake device id error : ', err);
             } else if (row) {
               debug('update user socket.id', row);
               var socketId = socket.id;
-              sqlite3.db.run(sqlite3.QUERIES.UPDATE_USERS_SET_SOCKET_ID_BY_USER_ID, [socketId, row.user_id], function (err) {
-                if (err) {
-                  debug('update users set socket error', err);
-                }
+              socket.user_id = row.user_id;
+              sqlite3.db.serialize(function () {
+                sqlite3.db.run(sqlite3.QUERIES.UPDATE_USERS_SET_SOCKET_ID_BY_USER_ID, [socketId, row.user_id], function (err) {
+                  if (err) {
+                    debug('update users set socket error : ', err);
+                  }
+                });
+                var currentTimeStamp = new Date().getTime();
+                sqlite3.db.run(sqlite3.QUERIES.UPDATE_USERS_SET_CONNECTION_TIME_BY_USER_ID, [currentTimeStamp, row.user_id], function (err) {
+                  if (err) {
+                    debug('update users set connection time error : ', err);
+                  }
+                });
               });
             }
           });
@@ -86,7 +95,7 @@ var chatObj = {
             [socket.room_id, socket.user_id],
             function (err, /** @param {Number} row.translate_ko */row) {
               if (err) {
-                debug('select chat room settings error', err);
+                debug('select chat room settings error : ', err);
                 socket.emit('new message', {error : err, process : 'select chat room settings'});
               } else {
                 if (row && row.translate_ko === 1) {
@@ -94,7 +103,7 @@ var chatObj = {
                     text : data, from : 'ko', to : 'es'
                   }, function (err, translatedToESResult) {
                     if (err) {
-                      debug('ko to es translation error', error);
+                      debug('ko to es translation error : ', error);
                       socket.emit('new message', {error : err, process : 'ko to es translation'})
                     } else {
                       sqlite3.db.run(
@@ -102,7 +111,7 @@ var chatObj = {
                         [socket.room_id, socket.user_id, data, translatedToESResult, 'ko', 'es'],
                         function (err) {
                           if (err) {
-                            debug('insert ko to es translated chat message error', err, data);
+                            debug('insert ko to es translated chat message error : ', err, data);
                             socket.emit('new message', {
                               error : err,
                               process : 'insert ko to es translated chat message'
@@ -120,7 +129,7 @@ var chatObj = {
                                   [socket.room_id, socket.user_id, data, translatedToZhCNResult, 'ko', 'zh-CHS'],
                                   function (err) {
                                     if (err) {
-                                      debug('insert ko to zh-CHS translated chat message error', err, data);
+                                      debug('insert ko to zh-CHS translated chat message error : ', err, data);
                                       socket.emit('new message', {
                                         error : err,
                                         process : 'insert ko to zh-CHS translated chat message'
@@ -150,7 +159,7 @@ var chatObj = {
                     [socket.room_id, socket.user_id, data, data, 'ko', 'ko'],
                     function (err) {
                       if (err) {
-                        debug('insert no translated chat message error', err, data);
+                        debug('insert no translated chat message error : ', err, data);
                         socket.emit('new message', {error : err, process : 'insert no translated chat message'});
                       } else {
                         socket.broadcast.to(socket.room_id).emit('new message', {
@@ -174,7 +183,7 @@ var chatObj = {
              */
             function (err, detectedResult) {
               if (err) {
-                debug('Source text language detection error', err, data);
+                debug('Source text language detection error : ', err, data);
                 socket.emit('new message', {error : err, process : 'Source text language detection'});
               } else {
                 debug('Translator detected language : ', detectedResult);
@@ -183,7 +192,7 @@ var chatObj = {
                   text : data, from : detectedResult, to : 'ko'
                 }, function (err, translatedResult) {
                   if (err) {
-                    debug(detectedResult + ' to ko translation error', err, data);
+                    debug(detectedResult + ' to ko translation error : ', err, data);
                     socket.emit('new message', {error : err, process : detectedResult + ' to ko translation'});
                   } else {
                     debug('Translated ' + detectedResult + ' to ko result : ', translatedResult);
@@ -192,7 +201,7 @@ var chatObj = {
                       [socket.room_id, socket.user_id, data, translatedResult, detectedResult, 'ko'],
                       function (err) {
                         if (err) {
-                          debug('insert ' + detectedResult + ' to ko translated chat message error', err, data);
+                          debug('insert ' + detectedResult + ' to ko translated chat message error : ', err, data);
                           socket.emit('new message', {error : err, process : ''});
                         } else {
                           socket.broadcast.to(socket.room_id).emit('new message', {
@@ -241,7 +250,7 @@ var chatObj = {
             [userData.user.user_id, userData.friend.user_id],
             function (err) {
               if (err) {
-                debug('create friend 1 error', err);
+                debug('create friend 1 error : ', err);
                 socket.emit('createdFriend', {error : err, process : 'create 1 friend'});
                 hasError = true;
               }
@@ -252,7 +261,7 @@ var chatObj = {
             [userData.friend.user_id, userData.user.user_id],
             function (err) {
               if (err) {
-                debug('create friend 2 error', err);
+                debug('create friend 2 error : ', err);
                 socket.emit('createdFriend', {error : err, process : 'create friend 2'});
                 hasError = true;
               }
@@ -272,7 +281,7 @@ var chatObj = {
           [userData.device_id],
           function (err, row) {
             if (err) {
-              debug('retrieveAlreadyRegisteredUserByDeviceId error', err);
+              debug('retrieveAlreadyRegisteredUserByDeviceId error : ', err);
               socket.emit('retrievedAlreadyRegisteredUserByDeviceId', {
                 error : err,
                 process : 'retrieveAlreadyRegisteredUserByDeviceId'
@@ -290,7 +299,7 @@ var chatObj = {
           [userData.user_id],
           function (err, rows) {
             if (err) {
-              debug('retrieve all friend error', err);
+              debug('retrieve all friend error : ', err);
               socket.emit('retrievedAllFriends', {error : err, process : 'retrieveAllFriends'});
             } else {
               socket.emit('retrievedAllFriends', {result : rows});
@@ -305,7 +314,7 @@ var chatObj = {
           sqlite3.QUERIES.SELECT_ALL_USERS,
           function (err, rows) {
             if (err) {
-              debug('retrieve all users error', err);
+              debug('retrieve all users error : ', err);
               socket.emit('retrievedAllUsers', {error : err, process : 'retrieveAllUsers'});
             } else {
               debug('retrieved all users', rows);
@@ -321,7 +330,7 @@ var chatObj = {
           [userData.user_id],
           function (err, rows) {
             if (err) {
-              debug('retrieve all chat rooms error', err);
+              debug('retrieve all chat rooms error : ', err);
               socket.emit('retrievedAllChatRoomIds', {error : err, process : 'retrieveAllChatRoomIds'});
             } else {
               socket.emit('retrievedAllChatRoomIds', {result : rows});
@@ -336,7 +345,7 @@ var chatObj = {
           {0 : userData.user_id, $room_ids : '\'' + userData.chat_room_ids.join('\',\'') + '\''},
           function (err, rows) {
             if (err) {
-              debug('select last message error', err);
+              debug('select last message error : ', err);
               socket.emit('retrievedAllChatRoomLastMessages', {
                 error : err,
                 process : 'retrieveAllChatRoomLastMessages'
@@ -355,7 +364,7 @@ var chatObj = {
             [userData.translate_ko, userData.chat_room_id, userData.user_id],
             function (err) {
               if (err) {
-                debug('update chat room settings error', err);
+                debug('update chat room settings error : ', err);
                 socket.emit('updatedChatRoomSettingsTranslateKo', {
                   error : err,
                   process : 'updatedChatRoomSettingsTranslateKo'
@@ -373,7 +382,7 @@ var chatObj = {
             [userData.show_picture, userData.chat_room_id, userData.user_id],
             function (err) {
               if (err) {
-                debug('update chat room settings error', err);
+                debug('update chat room settings error : ', err);
                 socket.emit('updatedChatRoomSettingsShowPicture', {
                   error : err,
                   process : 'updatedChatRoomSettingsShowPicture'
@@ -385,23 +394,26 @@ var chatObj = {
           );
         }
       });
-
+      
       socket.on('createUser', function (userData) {
         var user_id = createUID('user_id');
         userData.user_id = user_id;
         socket.user_id = user_id;
 
         var socketId = socket.id;
+        var currentTimeStamp = new Date().getTime();
+        userData.connection_time = currentTimeStamp;
+        userData.created = currentTimeStamp;
         userData.socket_id = socketId;
         sqlite3.db.run(
           sqlite3.QUERIES.INSERT_USER,
           [
             user_id, userData.user_name, userData.user_face, userData.device_id,
-            userData.device_type, userData.device_version, socketId
+            userData.device_type, userData.device_version, socketId, currentTimeStamp, currentTimeStamp
           ],
           function (err) {
             if (err) {
-              debug('insert user error', err, userData);
+              debug('insert user error : ', err, userData);
               socket.emit('createdUser', {error : err, process : 'createdUser'});
             } else {
               socket.emit('createdUser', {result : userData});
@@ -409,7 +421,7 @@ var chatObj = {
           }
         );
       });
-
+      
       socket.on('createChatRoom', function (userData) {
         var chat_room_id = createUID('chat_room_id');
         dummyChatRoomId = chat_room_id;
@@ -417,7 +429,7 @@ var chatObj = {
 
         sqlite3.db.run(sqlite3.QUERIES.INSERT_CHAT_ROOM, [chat_room_id], function (err) {
           if (err) {
-            debug('insert chat room error', err);
+            debug('insert chat room error : ', err);
             socket.emit('createdChatRoom', {error : err, process : 'createdChatRoom'});
           } else {
             socket.emit('createdChatRoom', {result : userData});
@@ -430,7 +442,7 @@ var chatObj = {
           sqlite3.QUERIES.SELECT_ALL_CHAT_ROOMS,
           function (err, rows) {
             if (err) {
-              debug('select all chat rooms error', err, userData);
+              debug('select all chat rooms error : ', err, userData);
               socket.emit('retrievedAllChatRooms', {error : err, process : 'retrievedAllChatRooms'});
             } else {
               socket.emit('retrievedAllChatRooms', {result : rows});
@@ -445,7 +457,7 @@ var chatObj = {
           [userData.user_id, userData.to_user_id],
           function (err, row) {
             if (err) {
-              debug('select chat room id by user id error', err, userData);
+              debug('select chat room id by user id error : ', err, userData);
               socket.emit('retrievedChatRoomIdByUserIdAndToUserId', {
                 error : err,
                 process : 'retrievedChatRoomIdByUserIdAndToUserId'
@@ -475,7 +487,7 @@ var chatObj = {
             [userData.chat_room_id, userData.user_id],
             function (err, row) {
               if (err) {
-                debug('select chat room settings error', err);
+                debug('select chat room settings error : ', err);
                 socket.emit('joinedChatRoom', {error : err, process : 'select chat room settings'});
                 hasError = true;
               } else if (!row) {
@@ -484,7 +496,7 @@ var chatObj = {
                   [userData.chat_room_id, userData.user_id, 0, 0],
                   function (err) {
                     if (err) {
-                      debug('insert chat room settings error', err);
+                      debug('insert chat room settings error : ', err);
                       socket.emit('joinedChatRoom', {error : err, process : 'insert chat room settings'});
                       hasError = true;
                     }
@@ -500,7 +512,7 @@ var chatObj = {
               [userData.user_id],
               function (err, row) {
                 if (err) {
-                  debug('join chat room - select chat room id by user id error', err, userData);
+                  debug('join chat room - select chat room id by user id error : ', err, userData);
                   socket.emit('joinedChatRoom', {error : err, process : 'select chat room id by user id'});
                   hasError = true;
                 } else {
@@ -510,7 +522,7 @@ var chatObj = {
                       [userData.chat_room_id, userData.user_id],
                       function (err) {
                         if (err) {
-                          debug('join chat room - insert chat room user error', err);
+                          debug('join chat room - insert chat room user error : ', err);
                           socket.emit('joinedChatRoom', {error : err, process : 'insert "user" to chat room'});
                           hasError = true;
                         } else {
@@ -529,7 +541,7 @@ var chatObj = {
                 [userData.to_user_id],
                 function (err, row) {
                   if (err) {
-                    debug('join chat room - select chat room id by to user id error', err, userData);
+                    debug('join chat room - select chat room id by to user id error : ', err, userData);
                     socket.emit('joinedChatRoom', {error : err, process : 'select chat room id by "to user" id'});
                     hasError = true;
                   } else {
@@ -539,7 +551,7 @@ var chatObj = {
                         [userData.chat_room_id, userData.to_user_id],
                         function (err) {
                           if (err) {
-                            debug('insert to user to chat room error', err);
+                            debug('insert to user to chat room error : ', err);
                             socket.emit('joinedChatRoom', {
                               error : err,
                               process : 'insert "to user" to chat room users'
