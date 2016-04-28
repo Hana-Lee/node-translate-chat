@@ -6,6 +6,7 @@
 
 var socketIO = require('socket.io');
 var translator = require('./translator');
+
 /**
  * @param {Function} db.parallelize
  */
@@ -53,7 +54,6 @@ var chatObj = {
 
     io.on('connection', function (/** @param {Object} socket.broadcast */socket) {
       debug('socket connection : ', socket.id, socket.handshake.query.device_id);
-      var addedUser = false;
 
       if (socket.handshake.query.device_id) {
         var deviceId = socket.handshake.query.device_id;
@@ -245,32 +245,81 @@ var chatObj = {
         debug('create friend', userData);
         sqlite3.db.serialize(function () {
           var hasError = false;
-          sqlite3.db.run(
-            sqlite3.QUERIES.INSERT_FRIEND,
+          sqlite3.db.get(
+            sqlite3.QUERIES.SELECT_FRIEND_BY_USER_ID_AND_FRIEND_ID,
             [userData.user.user_id, userData.friend.user_id],
-            function (err) {
+            function (err, row) {
               if (err) {
-                debug('create friend 1 error : ', err);
-                socket.emit('createdFriend', {error : err, process : 'create 1 friend'});
+                debug('select friend by user id and friend id error : ', err);
+                socket.emit('createdFriend', {error : err, process : 'select friend by user id and friend id'});
                 hasError = true;
-              }
-            }
-          );
-          sqlite3.db.run(
-            sqlite3.QUERIES.INSERT_FRIEND,
-            [userData.friend.user_id, userData.user.user_id],
-            function (err) {
-              if (err) {
-                debug('create friend 2 error : ', err);
-                socket.emit('createdFriend', {error : err, process : 'create friend 2'});
-                hasError = true;
+              } else {
+                if (row) {
+                  socket.emit('createdFriend', {result : 'Already exist friend'});
+                  hasError = true;
+                }
               }
             }
           );
           if (!hasError) {
+            sqlite3.db.run(
+              sqlite3.QUERIES.INSERT_FRIEND,
+              [userData.user.user_id, userData.friend.user_id],
+              function (err) {
+                if (err) {
+                  debug('create friend 1 error : ', err);
+                  socket.emit('createdFriend', {error : err, process : 'create 1 friend'});
+                  hasError = true;
+                }
+              }
+            );
+          }
+          if (!hasError) {
+            sqlite3.db.run(
+              sqlite3.QUERIES.INSERT_FRIEND,
+              [userData.friend.user_id, userData.user.user_id],
+              function (err) {
+                if (err) {
+                  debug('create friend 2 error : ', err);
+                  socket.emit('createdFriend', {error : err, process : 'create friend 2'});
+                  hasError = true;
+                }
+              }
+            );
+          }
+          if (!hasError) {
             // io.sockets.to(userData.friend.socket_id).emit('addedFriend', {result : userData.user});
             socket.broadcast.to(userData.friend.socket_id).emit('addedFriend', {result : userData.user});
             socket.emit('createdFriend', {result : 'OK'})
+          }
+        });
+      });
+
+      socket.on('retrieveToUserIdByChatRoomIdAndUserId', function (userData) {
+        sqlite3.db.get(
+          sqlite3.QUERIES.SELECT_TO_USER_ID_BY_CHAT_ROOM_ID_AND_USER_ID,
+          [userData.chat_room_id, userData.user_id],
+          function (err, row) {
+            if (err) {
+              debug('select to user id by chat room id and user id error : ', err);
+              socket.emit('retrievedToUserIdByChatRoomIdAndUserId', {
+                error : err,
+                process : 'select to user id by chat room id and user id'
+              });
+            } else {
+              socket.emit('retrievedToUserIdByChatRoomIdAndUserId', {result : row});
+            }
+          }
+        );
+      });
+
+      socket.on('retrieveUserByUserId', function (userData) {
+        sqlite3.db.get(sqlite3.QUERIES.SELECT_USER_BY_USER_ID, [userData.user_id], function (err, row) {
+          if (err) {
+            debug('select user by user id error : ', err);
+            socket.emit('retrievedUserByUserId', {error : err, process : 'select user by user id'});
+          } else {
+            socket.emit('retrievedUserByUserId', {result : row});
           }
         });
       });
@@ -436,16 +485,19 @@ var chatObj = {
         });
       });
 
-      socket.on('retrieveAllChatRooms', function (userData) {
+      socket.on('retrieveAllChatRoomIdsAndFriendIdAndLastTextByUserId', function (userData) {
         sqlite3.db.all(
-          sqlite3.QUERIES.SELECT_ALL_CHAT_ROOMS_BY_USER_ID,
-          [userData.user_id],
+          sqlite3.QUERIES.SELECT_ALL_CHAT_ROOM_IDS_AND_FRIEND_ID_AND_LAST_MESSAGE_BY_USER_ID,
+          {$userId : userData.user_id},
           function (err, rows) {
             if (err) {
               debug('select all chat rooms error : ', err, userData);
-              socket.emit('retrievedAllChatRooms', {error : err, process : 'retrievedAllChatRooms'});
+              socket.emit('retrievedAllChatRoomIdsAndFriendIdAndLastTextByUserId', {
+                error : err,
+                process : 'select all chat room id and friend id by user id'
+              });
             } else {
-              socket.emit('retrievedAllChatRooms', {result : rows});
+              socket.emit('retrievedAllChatRoomIdsAndFriendIdAndLastTextByUserId', {result : rows});
             }
           }
         );
@@ -471,10 +523,6 @@ var chatObj = {
 
       // when the client emits 'add user', this listens and executes
       socket.on('joinChatRoom', function (userData) {
-        if (addedUser) {
-          return;
-        }
-
         if (!userData.chat_room_id) {
           userData.chat_room_id = dummyChatRoomId
         }
@@ -581,7 +629,6 @@ var chatObj = {
           // we store the user_name in the socket session for this client
           socket.user_name = userData.user_name;
           ++numUsers;
-          addedUser = true;
           socket.emit('joinedChatRoom', {
             numUsers : numUsers
           });
@@ -609,15 +656,13 @@ var chatObj = {
 
       // when the user disconnects.. perform this
       socket.on('disconnect', function () {
-        if (addedUser) {
-          --numUsers;
+        --numUsers;
 
-          // echo globally that this client has left
-          socket.broadcast.emit('user left', {
-            user_name : socket.user_name,
-            num_users : numUsers
-          });
-        }
+        // echo globally that this client has left
+        socket.broadcast.emit('user left', {
+          user_name : socket.user_name,
+          num_users : numUsers
+        });
       });
     });
   }

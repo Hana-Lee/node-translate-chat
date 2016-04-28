@@ -130,7 +130,19 @@ QUERIES.SELECT_ALL_FRIENDS_BY_USER_ID =
   'JOIN Users AS u ON f.friend_id = u.user_id ' +
   'WHERE f.user_id = ? ' +
   'ORDER BY u.user_name DESC';
-QUERIES.SELECT_ALL_CHAT_ROOMS_BY_USER_ID = 'SELECT * FROM ChatRooms WHERE user_id = ?';
+QUERIES.SELECT_FRIEND_BY_USER_ID_AND_FRIEND_ID =
+  'SELECT * FROM Friends WHERE user_id = ? AND friend_id = ?';
+
+QUERIES.SELECT_TO_USER_ID_BY_CHAT_ROOM_ID_AND_USER_ID =
+  'SELECT user_id FROM ChatRoomUsers ' +
+  'WHERE chat_room_id = ? AND user_id <> ?';
+
+QUERIES.SELECT_ALL_CHAT_ROOM_IDS_AND_FRIEND_ID_AND_LAST_MESSAGE_BY_USER_ID =
+  'SELECT cu.chat_room_id, cu.user_id AS friend_id, cm.o_message AS last_text, MAX(cm.created) AS created ' +
+  'FROM ChatRoomUsers AS cu, ChatMessages AS cm ' +
+  'ON cu.chat_room_id = cm.chat_room_id ' +
+  'WHERE cu.chat_room_id in (SELECT chat_room_id FROM ChatRoomUsers WHERE user_id = $userId) ' +
+  'AND cu.user_id <> $userId';
 QUERIES.SELECT_ALL_CHAT_ROOM_IDS_BY_USER_ID =
   'SELECT chat_room_id FROM ChatRoomUsers WHERE user_id = ? ORDER BY created DESC';
 QUERIES.SELECT_ALL_CHAT_ROOM_USERS_BY_CHAT_ROOM_ID = 
@@ -142,7 +154,8 @@ QUERIES.SELECT_LAST_MESSAGE_BY_CHAT_ROOM_ID_AND_USER_ID =
   'WHERE chat_room_id = ? AND user_id = ? ORDER BY created DESC';
 QUERIES.SELECT_ALL_LAST_MESSAGE_BY_CHAT_ROOM_ID_AND_USER_ID = 
   'SELECT MAX(created) AS max, ' +
-  'o_message, t_message, from_lang_code, to_lang_code, read, read_time, created ' +
+    'chat_room_id, ' +
+    'o_message, t_message, from_lang_code, to_lang_code, read, read_time, created ' +
   'FROM ChatMessages ' +
   'WHERE user_id = ? AND chat_room_id in ($room_ids) ' +
   'GROUP BY chat_room_id ORDER BY created DESC';
@@ -153,7 +166,7 @@ QUERIES.SELECT_ALL_CHAT_MESSAGES_BY_CHAT_ROOM_ID =
   'FROM ChatMessages ' +
   'WHERE chat_room_id = ? ORDER BY created DESC';
 QUERIES.SELECT_CHAT_ROOM_ID_BY_USER_ID_AND_TO_USER_ID = 
-  'SELECT chat_room_id FROM ChatRoomUsers WHERE user_id = ? AND user_id = ?';
+  'SELECT chat_room_id FROM ChatRoomUsers WHERE user_id in (?, ?) GROUP BY chat_room_id';
 QUERIES.SELECT_CHAT_ROOM_ID_BY_USER_ID = 
   'SELECT chat_room_id FROM ChatRoomUsers WHERE user_id = ? LIMIT 1';
 QUERIES.SELECT_CHAT_ROOM_SETTINGS_BY_CHAT_ROOM_ID_AND_USER_ID =
