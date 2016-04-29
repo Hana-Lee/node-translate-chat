@@ -34,8 +34,9 @@ process.on('SIGINT', function () {
   server.close(function () {
     console.log('node server is shut down...');
     // sqlite3.db.close();
-    process.exit(0);
   });
+  sqlite3.db.close();
+  process.exit(0);
 });
 
 /**
