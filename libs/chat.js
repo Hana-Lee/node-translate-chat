@@ -110,107 +110,107 @@ var chatObj = {
             text : ''
           }
         };
-        var koreanReg = /[가-힣]/g;
+        sqlite3.db.run(
+          sqlite3.QUERIES.INSERT_CHAT_MESSGE,
+          [socket.room_id, socket.user_id, userData.text, 'ko', 'ko', userData.type],
+          function (err) {
+            if (err) {
+              debug('insert no translated chat message error : ', err, userData.text);
+              socket.emit('new_message', {error : err, process : 'insert no translated chat message'});
+            } else {
+              var koreanReg = /[가-힣]/g;
+              if (userData.type.toLowerCase() === 'image') {
+                sqlite3.db.run(
+                  sqlite3.QUERIES.INSERT_CHAT_MESSGE,
+                  [socket.room_id, socket.user_id, userData.text, 'ko', 'ko', userData.type],
+                  function (err) {
+                    if (err) {
+                      debug('insert image chat message error : ', err);
+                      socket.emit('new_message', {error : err, process : 'insert image chat message'});
+                    } else {
 
-        if (userData.type.toLowerCase() === 'image') {
-          sqlite3.db.run(
-            sqlite3.QUERIES.INSERT_CHAT_MESSGE,
-            [socket.room_id, socket.user_id, userData.text, userData.text, 'ko', 'ko', userData.type],
-            function (err) {
-              if (err) {
-                debug('insert image chat message error : ', err);
-                socket.emit('new_message', {error : err, process : 'insert image chat message'});
+                    }
+                  }
+                );
               } else {
-
-              }
-            }
-          );
-        } else {
-          if (koreanReg.test(userData.text)) {
-            sqlite3.db.get(
-              sqlite3.QUERIES.SELECT_CHAT_ROOM_SETTINGS_BY_CHAT_ROOM_ID_AND_USER_ID,
-              [socket.room_id, socket.user_id],
-              function (err, /** @param {Number} row.translate_ko */row) {
-                if (err) {
-                  debug('select chat room settings error : ', err);
-                  socket.emit('new_message', {error : err, process : 'select chat room settings'});
-                } else {
-                  if (row && row.translate_ko === 1) {
-                    translator.translate({
-                      text : userData.text, from : 'ko', to : 'es'
-                    }, function (err, translatedToESResult) {
+                if (koreanReg.test(userData.text)) {
+                  sqlite3.db.get(
+                    sqlite3.QUERIES.SELECT_CHAT_ROOM_SETTINGS_BY_CHAT_ROOM_ID_AND_USER_ID,
+                    [socket.room_id, socket.user_id],
+                    function (err, /** @param {Number} row.translate_ko */row) {
                       if (err) {
-                        debug('ko to es translation error : ', error);
-                        socket.emit('new_message', {error : err, process : 'ko to es translation'})
+                        debug('select chat room settings error : ', err);
+                        socket.emit('new_message', {error : err, process : 'select chat room settings'});
                       } else {
-                        sqlite3.db.run(
-                          sqlite3.QUERIES.INSERT_CHAT_MESSGE,
-                          [socket.room_id, socket.user_id, userData.text, translatedToESResult, 'ko', 'es', userData.type],
-                          function (err) {
+                        if (row && row.translate_ko === 1) {
+                          translator.translate({
+                            text : userData.text, from : 'ko', to : 'es'
+                          }, function (err, translatedToESResult) {
                             if (err) {
-                              debug('insert ko to es translated chat message error : ', err, userData.text);
-                              socket.emit('new_message', {
-                                error : err,
-                                process : 'insert ko to es translated chat message'
-                              });
+                              debug('ko to es translation error : ', error);
+                              socket.emit('new_message', {error : err, process : 'ko to es translation'})
                             } else {
-                              translator.translate({
-                                text : userData.text, from : 'ko', to : 'zh-CHS'
-                              }, function (err, translatedToZhCNResult) {
-                                if (err) {
-                                  debug('ko to zh-CHS translation error : ', err, userData.text);
-                                  socket.emit('new_message', {error : err, process : 'ko to zh-CHS translation'});
-                                } else {
-                                  sqlite3.db.run(
-                                    sqlite3.QUERIES.INSERT_CHAT_MESSGE,
-                                    [socket.room_id, socket.user_id, userData.text, translatedToZhCNResult, 'ko', 'zh-CHS', userData.type],
-                                    function (err) {
+                              sqlite3.db.run(
+                                sqlite3.QUERIES.INSERT_CHAT_MESSGE,
+                                [socket.room_id, socket.user_id, translatedToESResult, 'ko', 'es', userData.type],
+                                function (err) {
+                                  if (err) {
+                                    debug('insert ko to es translated chat message error : ', err, userData.text);
+                                    socket.emit('new_message', {
+                                      error : err,
+                                      process : 'insert ko to es translated chat message'
+                                    });
+                                  } else {
+                                    translator.translate({
+                                      text : userData.text, from : 'ko', to : 'zh-CHS'
+                                    }, function (err, translatedToZhCNResult) {
                                       if (err) {
-                                        debug('insert ko to zh-CHS translated chat message error : ', err, userData.text);
-                                        socket.emit('new_message', {
-                                          error : err,
-                                          process : 'insert ko to zh-CHS translated chat message'
-                                        });
+                                        debug('ko to zh-CHS translation error : ', err, userData.text);
+                                        socket.emit('new_message', {error : err, process : 'ko to zh-CHS translation'});
                                       } else {
-                                        pushOptions.text = userData.text;
-                                        pushOptions.android.text = userData.text;
-                                        pushOptions.ios.text = userData.text;
+                                        sqlite3.db.run(
+                                          sqlite3.QUERIES.INSERT_CHAT_MESSGE,
+                                          [socket.room_id, socket.user_id, translatedToZhCNResult, 'ko', 'zh-CHS', userData.type],
+                                          function (err) {
+                                            if (err) {
+                                              debug('insert ko to zh-CHS translated chat message error : ', err, userData.text);
+                                              socket.emit('new_message', {
+                                                error : err,
+                                                process : 'insert ko to zh-CHS translated chat message'
+                                              });
+                                            } else {
+                                              pushOptions.text = userData.text;
+                                              pushOptions.android.text = userData.text;
+                                              pushOptions.ios.text = userData.text;
 
-                                        pushNotification(pushOptions);
+                                              pushNotification(pushOptions);
 
-                                        socket.broadcast.to(socket.room_id).emit('new_message', {
-                                          result : {
-                                            user_name : socket.user_name,
-                                            text : userData.text + '<br />' + translatedToESResult + '<br />' + translatedToZhCNResult,
-                                            type : userData.type
-                                          }
-                                        });
-                                        socket.emit('new_message', {
-                                          result : {
-                                            user_name : socket.user_name,
-                                            text : '스페인어 : [' + translatedToESResult + ']<br />중국어 : [' + translatedToZhCNResult + ']',
-                                            type : userData.type
-                                          }
-                                        });
+                                              socket.broadcast.to(socket.room_id).emit('new_message', {
+                                                result : {
+                                                  user_name : socket.user_name,
+                                                  text : userData.text + '<br />' + translatedToESResult + '<br />' + translatedToZhCNResult,
+                                                  type : userData.type
+                                                }
+                                              });
+                                              socket.emit('new_message', {
+                                                result : {
+                                                  user_name : socket.user_name,
+                                                  text : '스페인어 : [' + translatedToESResult + ']<br />중국어 : [' + translatedToZhCNResult + ']',
+                                                  type : userData.type
+                                                }
+                                              });
+                                            }
+                                          });
                                       }
                                     });
+                                  }
                                 }
-                              });
+                              );
                             }
-                          }
-                        );
-                      }
-                    });
-                  } else {
-                    debug('no translate', userData.text);
-                    sqlite3.db.run(
-                      sqlite3.QUERIES.INSERT_CHAT_MESSGE,
-                      [socket.room_id, socket.user_id, userData.text, userData.text, 'ko', 'ko', userData.type],
-                      function (err) {
-                        if (err) {
-                          debug('insert no translated chat message error : ', err, userData.text);
-                          socket.emit('new_message', {error : err, process : 'insert no translated chat message'});
+                          });
                         } else {
+                          debug('no translate', userData.text);
+                          
                           pushOptions.text = userData.text;
                           pushOptions.android.text = userData.text;
                           pushOptions.ios.text = userData.text;
@@ -226,71 +226,71 @@ var chatObj = {
                           });
                         }
                       }
-                    );
-                  }
+                    }
+                  );
+                } else {
+                  translator.detect({
+                      text : userData.text
+                    },
+                    /**
+                     * @param {Object} err
+                     * @param {String} detectedResult
+                     */
+                    function (err, detectedResult) {
+                      if (err) {
+                        debug('Source text language detection error : ', err, userData.text);
+                        socket.emit('new_message', {error : err, process : 'Source text language detection'});
+                      } else {
+                        debug('Translator detected language : ', detectedResult);
+
+                        translator.translate({
+                          text : userData.text, from : detectedResult, to : 'ko'
+                        }, function (err, translatedResult) {
+                          if (err) {
+                            debug(detectedResult + ' to ko translation error : ', err, userData.text);
+                            socket.emit('new_message', {error : err, process : detectedResult + ' to ko translation'});
+                          } else {
+                            debug('Translated ' + detectedResult + ' to ko result : ', translatedResult);
+                            sqlite3.db.run(
+                              sqlite3.QUERIES.INSERT_CHAT_MESSGE,
+                              [socket.room_id, socket.user_id, translatedResult, detectedResult, 'ko', userData.type],
+                              function (err) {
+                                if (err) {
+                                  debug('insert ' + detectedResult + ' to ko translated chat message error : ', err, userData.text);
+                                  socket.emit('new_message', {error : err, process : ''});
+                                } else {
+                                  pushOptions.text = userData.text;
+                                  pushOptions.android.text = userData.text;
+                                  pushOptions.ios.text = userData.text;
+
+                                  pushNotification(pushOptions);
+
+                                  socket.broadcast.to(socket.room_id).emit('new_message', {
+                                    result : {
+                                      user_name : socket.user_name,
+                                      text : translatedResult + ' [ ' + userData.text + ' ]',
+                                      type : userData.type
+                                    }
+                                  });
+                                  socket.emit('new_message', {
+                                    result : {
+                                      user_name : socket.user_name,
+                                      text : '번역 : [' + translatedResult + ']',
+                                      type : userData.type
+                                    }
+                                  });
+                                }
+                              }
+                            );
+                          }
+                        });
+                      }
+                    });
                 }
               }
-            );
-          } else {
-            translator.detect({
-                text : userData.text
-              },
-              /**
-               * @param {Object} err
-               * @param {String} detectedResult
-               */
-              function (err, detectedResult) {
-                if (err) {
-                  debug('Source text language detection error : ', err, userData.text);
-                  socket.emit('new_message', {error : err, process : 'Source text language detection'});
-                } else {
-                  debug('Translator detected language : ', detectedResult);
-
-                  translator.translate({
-                    text : userData.text, from : detectedResult, to : 'ko'
-                  }, function (err, translatedResult) {
-                    if (err) {
-                      debug(detectedResult + ' to ko translation error : ', err, userData.text);
-                      socket.emit('new_message', {error : err, process : detectedResult + ' to ko translation'});
-                    } else {
-                      debug('Translated ' + detectedResult + ' to ko result : ', translatedResult);
-                      sqlite3.db.run(
-                        sqlite3.QUERIES.INSERT_CHAT_MESSGE,
-                        [socket.room_id, socket.user_id, userData.text, translatedResult, detectedResult, 'ko', userData.type],
-                        function (err) {
-                          if (err) {
-                            debug('insert ' + detectedResult + ' to ko translated chat message error : ', err, userData.text);
-                            socket.emit('new_message', {error : err, process : ''});
-                          } else {
-                            pushOptions.text = userData.text;
-                            pushOptions.android.text = userData.text;
-                            pushOptions.ios.text = userData.text;
-
-                            pushNotification(pushOptions);
-
-                            socket.broadcast.to(socket.room_id).emit('new_message', {
-                              result : {
-                                user_name : socket.user_name,
-                                text : translatedResult + ' [ ' + userData.text + ' ]',
-                                type : userData.type
-                              }
-                            });
-                            socket.emit('new_message', {
-                              result : {
-                                user_name : socket.user_name,
-                                text : '번역 : [' + translatedResult + ']',
-                                type : userData.type
-                              }
-                            });
-                          }
-                        }
-                      );
-                    }
-                  });
-                }
-              });
+            }
           }
-        }
+        );
       });
 
       /**
