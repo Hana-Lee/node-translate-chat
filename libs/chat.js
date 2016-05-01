@@ -118,7 +118,9 @@ var chatObj = {
               debug('insert no translated chat message error : ', err, userData.text);
               socket.emit('new_message', {error : err, process : 'insert no translated chat message'});
             } else {
-              var koreanReg = /[가-힣]/g;
+              var koreanReg = /[ㄱ-ㅎ가-힣]/g; // ㅎㅎㅎ, ㅋㅋㅋ 에 대응
+              var emojiReg = /[\uD800-\uDBFF][\uDC00-\uDFFF]/g;
+              debug('emoji check : ', emojiReg.test(userData.text));
               if (userData.type.toLowerCase() === 'image') {
                 sqlite3.db.run(
                   sqlite3.QUERIES.INSERT_CHAT_MESSGE,
@@ -210,7 +212,7 @@ var chatObj = {
                           });
                         } else {
                           debug('no translate', userData.text);
-                          
+
                           pushOptions.text = userData.text;
                           pushOptions.android.text = userData.text;
                           pushOptions.ios.text = userData.text;

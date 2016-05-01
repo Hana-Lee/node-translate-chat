@@ -165,7 +165,7 @@ QUERIES.SELECT_ALL_CHAT_MESSAGES_BY_CHAT_ROOM_ID =
     'chat_message_id, chat_room_id, user_id, text, ' +
     'from_lang_code, to_lang_code, type, read, read_time, created ' +
   'FROM ChatMessages ' +
-  'WHERE chat_room_id = ? ORDER BY created DESC';
+  'WHERE chat_room_id = ? ORDER BY created ASC';
 QUERIES.SELECT_CHAT_ROOM_ID_BY_USER_ID_AND_TO_USER_ID = 
   'SELECT chat_room_id FROM ChatRoomUsers WHERE user_id in (?, ?) GROUP BY chat_room_id';
 QUERIES.SELECT_CHAT_ROOM_ID_BY_USER_ID = 
