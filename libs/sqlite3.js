@@ -55,8 +55,6 @@ QUERIES.CREATE_CHAT_MESSAGES =
     'chat_room_id VARCHAR(255) NOT NULL, ' +
     'user_id VARCHAR(255) NOT NULL, ' +
     'text VARCHAR(2048), ' +
-    'from_lang_code CHAR(6), ' +
-    'to_lang_code CHAR(6), ' +
     'type VARCHAR(20) NOT NULL DEFAULT \'text\', ' +
     'read BOOLEAN NOT NULL CHECK (read IN (0, 1)), ' +
     'read_time TIMESTAMP, ' +
@@ -68,8 +66,8 @@ QUERIES.CREATE_COMPLEX_INDEX2_CHAT_MESSAGES = 'CREATE INDEX IF NOT EXISTS cmidx0
 QUERIES.CREATE_COMPLEX_INDEX3_CHAT_MESSAGES = 'CREATE INDEX IF NOT EXISTS cmidx03 ON ChatMessages (user_id, text)';
 
 QUERIES.INSERT_CHAT_MESSGE = 'INSERT INTO ChatMessages (' +
-    'chat_room_id, user_id, text, from_lang_code, to_lang_code, type, read' +
-  ') VALUES (?, ?, ?, ?, ?, ?, 0)';
+    'chat_room_id, user_id, text, type, read' +
+  ') VALUES (?, ?, ?, ?, 0)';
 QUERIES.INSERT_USER =
   'INSERT INTO Users ' +
   '(' +
@@ -150,20 +148,20 @@ QUERIES.SELECT_ALL_CHAT_ROOM_USERS_BY_CHAT_ROOM_ID =
   'SELECT chat_room_id, user_id FROM ChatRoomUsers WHERE chat_room_id = ?';
 QUERIES.SELECT_LAST_MESSAGE_BY_CHAT_ROOM_ID_AND_USER_ID =
   'SELECT MAX(created) AS max, ' +
-    'text, from_lang_code, to_lang_code, type, read, read_time, created ' +
+    'text, type, read, read_time, created ' +
   'FROM ChatMessages ' +
   'WHERE chat_room_id = ? AND user_id = ? ORDER BY created DESC';
 QUERIES.SELECT_ALL_LAST_MESSAGE_BY_CHAT_ROOM_ID_AND_USER_ID = 
   'SELECT MAX(created) AS max, ' +
     'chat_room_id, ' +
-    'text, from_lang_code, to_lang_code, type, read, read_time, created ' +
+    'text, type, read, read_time, created ' +
   'FROM ChatMessages ' +
   'WHERE user_id = ? AND chat_room_id in ($room_ids) ' +
   'GROUP BY chat_room_id ORDER BY created DESC';
 QUERIES.SELECT_ALL_CHAT_MESSAGES_BY_CHAT_ROOM_ID =
   'SELECT ' +
     'chat_message_id, chat_room_id, user_id, text, ' +
-    'from_lang_code, to_lang_code, type, read, read_time, created ' +
+    'type, read, read_time, created ' +
   'FROM ChatMessages ' +
   'WHERE chat_room_id = ? ORDER BY created ASC';
 QUERIES.SELECT_CHAT_ROOM_ID_BY_USER_ID_AND_TO_USER_ID = 
