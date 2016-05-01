@@ -6,6 +6,8 @@
 
 var socketIO = require('socket.io');
 var translator = require('./translator');
+var pushNotification = require('./push-notification');
+var authorizationToken = process.env.IONIC_PUSH_AUTORIZATION_TOKEN;
 
 /**
  * @param {Function} db.parallelize
@@ -33,17 +35,20 @@ function createUID(value) {
  * @param {String} chat_room_id
  * @param {String[]} chat_room_ids
  * @param {String} user_face
+ * @param {String} device_token
  * @param {Boolean} show_picture
  * @param {String} to_user_id
  * @param {String} device_id
+ * @param {String} connection_time
+ * @param {Array} friends
  * @param {String} device_type
  * @param {String} device_version
  * @param {Object} user
  * @param {Object} friend
  */
 var userData = {
-  friend_id : null, chat_room_id : null, chat_room_ids : null, user_face : null,
-  show_picture : false, to_user_id : null, device_id : null, connection_time : null,
+  friend_id : null, chat_room_id : null, chat_room_ids : null, user_face : null, device_token : null,
+  show_picture : false, to_user_id : null, device_id : null, connection_time : null, friends : null,
   device_type : null, device_version : null, user : null, friend : {socket_id : null, user_id : null}
 };
 
@@ -87,6 +92,24 @@ var chatObj = {
       socket.on('new_message', function (/** @type {String} */userData) {
         // we tell the client to execute 'new_message'
         debug('new_message : ', socket.id);
+        var pushTokens = [];
+        userData.friends.forEach(function (friend) {
+          pushTokens.push(friend.device_token);
+        });
+        var pushOptions = {
+          authorization_token : authorizationToken,
+          tokens : pushTokens,
+          title : '번역 채팅',
+          text : '',
+          android : {
+            title : '번역 채팅',
+            text : ''
+          },
+          ios : {
+            title : '번역 채팅',
+            text : ''
+          }
+        };
         var koreanReg = /[가-힣]/g;
 
         if (userData.type.toLowerCase() === 'image') {
@@ -149,6 +172,12 @@ var chatObj = {
                                           process : 'insert ko to zh-CHS translated chat message'
                                         });
                                       } else {
+                                        pushOptions.text = userData.text;
+                                        pushOptions.android.text = userData.text;
+                                        pushOptions.ios.text = userData.text;
+
+                                        pushNotification(pushOptions);
+
                                         socket.broadcast.to(socket.room_id).emit('new_message', {
                                           result : {
                                             user_name : socket.user_name,
@@ -182,6 +211,12 @@ var chatObj = {
                           debug('insert no translated chat message error : ', err, userData.text);
                           socket.emit('new_message', {error : err, process : 'insert no translated chat message'});
                         } else {
+                          pushOptions.text = userData.text;
+                          pushOptions.android.text = userData.text;
+                          pushOptions.ios.text = userData.text;
+
+                          pushNotification(pushOptions);
+
                           socket.broadcast.to(socket.room_id).emit('new_message', {
                             result : {
                               user_name : socket.user_name,
@@ -227,6 +262,12 @@ var chatObj = {
                             debug('insert ' + detectedResult + ' to ko translated chat message error : ', err, userData.text);
                             socket.emit('new_message', {error : err, process : ''});
                           } else {
+                            pushOptions.text = userData.text;
+                            pushOptions.android.text = userData.text;
+                            pushOptions.ios.text = userData.text;
+
+                            pushNotification(pushOptions);
+
                             socket.broadcast.to(socket.room_id).emit('new_message', {
                               result : {
                                 user_name : socket.user_name,
@@ -505,7 +546,7 @@ var chatObj = {
         sqlite3.db.run(
           sqlite3.QUERIES.INSERT_USER,
           [
-            user_id, userData.user_name, userData.user_face, userData.device_id,
+            user_id, userData.user_name, userData.user_face, userData.device_token, userData.device_id,
             userData.device_type, userData.device_version, socketId, currentTimeStamp, currentTimeStamp
           ],
           function (err) {

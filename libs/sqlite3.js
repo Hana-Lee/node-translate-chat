@@ -12,13 +12,14 @@ QUERIES.CREATE_USERS =
     'user_id VARCHAR(255) NOT NULL, ' +
     'user_name VARCHAR(255) NOT NULL, ' +
     'user_face VARCHAR(255) NOT NULL DEFAULT \'img/sarah.png\' , ' +
+    'device_token VARCHAR(1024) NOT NULL, ' +
     'device_id VARCHAR(512) NOT NULL, ' +
     'device_type VARCHAR(512) NOT NULL, ' +
     'device_version VARCHAR(512) NOT NULL, ' +
     'socket_id VARCHAR(255) NOT NULL, ' +
     'connection_time TIMESTAMP NOT NULL DEFAULT (STRFTIME(\'%s\', \'now\') || \'000\'), ' +
     'created TIMESTAMP NOT NULL DEFAULT (STRFTIME(\'%s\', \'now\') || \'000\'), ' +
-    'PRIMARY KEY(device_id)' +
+    'PRIMARY KEY(user_id, user_name, device_id)' +
   ')';
 QUERIES.CREATE_FRIENDS =
   'CREATE TABLE IF NOT EXISTS Friends(' +
@@ -73,10 +74,10 @@ QUERIES.INSERT_CHAT_MESSGE = 'INSERT INTO ChatMessages (' +
 QUERIES.INSERT_USER =
   'INSERT INTO Users ' +
   '(' +
-    'user_id, user_name, user_face, device_id, device_type, ' +
+    'user_id, user_name, user_face, device_token, device_id, device_type, ' +
     'device_version, socket_id, connection_time, created' +
   ') ' +
-  'VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)';
+  'VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)';
 QUERIES.INSERT_FRIEND = 'INSERT INTO Friends (user_id, friend_id) VALUES (?, ?)';
 QUERIES.INSERT_CHAT_ROOM = 'INSERT INTO ChatRooms (chat_room_id) VALUES (?)';
 QUERIES.INSERT_CHAT_ROOM_USER = 'INSERT INTO ChatRoomUsers (chat_room_id, user_id) VALUES (?, ?)';
@@ -101,30 +102,30 @@ QUERIES.UPDATE_USERS_SET_SOCKET_ID_BY_USER_ID = 'UPDATE Users SET socket_id = ? 
 QUERIES.SELECT_USER_BY_USER_ID =
   'SELECT ' +
     'user_id, user_name, user_face, ' +
-    'device_id, device_type, device_version, socket_id, ' +
-    'connection_time, created ' +
+    'device_token, device_id, device_type, device_version, ' +
+    'socket_id, connection_time, created ' +
   'FROM Users WHERE user_id = ?';
 QUERIES.SELECT_USER_BY_USER_NAME =
   'SELECT ' +
     'user_id, user_name, user_face, ' +
-    'device_id, device_type, device_version, socket_id, ' +
-    'connection_time, created ' +
+    'device_token, device_id, device_type, device_version, ' +
+    'socket_id, connection_time, created ' +
   'FROM Users WHERE user_name = ?';
 QUERIES.SELECT_USER_BY_DEVICE_ID =
   'SELECT ' +
     'user_id, user_name, user_face, ' +
-    'device_id, device_type, device_version, socket_id, ' +
-    'connection_time, created ' +
+    'device_token, device_id, device_type, device_version, ' +
+    'socket_id, connection_time, created ' +
   'FROM Users WHERE device_id = ?';
 QUERIES.SELECT_ALL_USERS =
   'SELECT ' +
     'user_id, user_name, user_face, ' +
-    'device_id, device_type, device_version, socket_id, ' +
-    'connection_time, created ' +
+    'device_token, device_id, device_type, device_version, ' +
+    'socket_id, connection_time, created ' +
   'FROM Users ORDER BY user_name DESC';
 QUERIES.SELECT_ALL_FRIENDS_BY_USER_ID =
   'SELECT ' +
-    'u.user_id, u.user_name, u.user_face, ' +
+    'u.user_id, u.user_name, u.user_face, u.device_token, ' +
     'u.device_id, u.device_type, u.device_version, u.socket_id, ' +
     'u.connection_time, f.created ' +
   'FROM Friends AS f ' +
@@ -150,7 +151,7 @@ QUERIES.SELECT_ALL_CHAT_ROOM_USERS_BY_CHAT_ROOM_ID =
   'SELECT chat_room_id, user_id FROM ChatRoomUsers WHERE chat_room_id = ?';
 QUERIES.SELECT_LAST_MESSAGE_BY_CHAT_ROOM_ID_AND_USER_ID =
   'SELECT MAX(created) AS max, ' +
-  'o_message, t_message, from_lang_code, to_lang_code, type, read, read_time, created ' +
+    'o_message, t_message, from_lang_code, to_lang_code, type, read, read_time, created ' +
   'FROM ChatMessages ' +
   'WHERE chat_room_id = ? AND user_id = ? ORDER BY created DESC';
 QUERIES.SELECT_ALL_LAST_MESSAGE_BY_CHAT_ROOM_ID_AND_USER_ID = 
@@ -162,8 +163,8 @@ QUERIES.SELECT_ALL_LAST_MESSAGE_BY_CHAT_ROOM_ID_AND_USER_ID =
   'GROUP BY chat_room_id ORDER BY created DESC';
 QUERIES.SELECT_ALL_CHAT_MESSAGES_BY_CHAT_ROOM_ID =
   'SELECT ' +
-  'chat_message_id, chat_room_id, user_id, o_message, t_message AS text, ' +
-  'from_lang_code, to_lang_code, type, read, read_time, created AS date ' +
+    'chat_message_id, chat_room_id, user_id, o_message, t_message AS text, ' +
+    'from_lang_code, to_lang_code, type, read, read_time, created AS date ' +
   'FROM ChatMessages ' +
   'WHERE chat_room_id = ? ORDER BY created DESC';
 QUERIES.SELECT_CHAT_ROOM_ID_BY_USER_ID_AND_TO_USER_ID = 
