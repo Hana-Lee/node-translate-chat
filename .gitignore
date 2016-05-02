@@ -99,3 +99,7 @@ Session.vim
 tags
 
 translate-chat.db
+uploads/*.jpg
+uploads/*.jpeg
+uploads/*.png
+uploads/*.gif
