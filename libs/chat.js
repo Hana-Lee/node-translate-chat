@@ -105,17 +105,17 @@ var chatObj = {
           var pushOptions = {
             authorization_token : authorizationToken,
             tokens : pushTokens,
-            title : '번역 채팅',
+            title : '사랑의대화',
             text : '',
             android : {
-              title : '번역 채팅',
+              title : '사랑의대화',
               text : '',
               payload : {
                 chat_room_id : socket.room_id
               }
             },
             ios : {
-              title : '번역 채팅',
+              title : '사랑의대화',
               text : '',
               payload : {
                 chat_room_id : socket.room_id
