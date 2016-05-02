@@ -45,11 +45,13 @@ function createUID(value) {
  * @param {String} device_version
  * @param {Object} user
  * @param {Object} friend
+ * @param {Boolean} online
  */
 var userData = {
   friend_id : null, chat_room_id : null, chat_room_ids : null, user_face : null, device_token : null,
   show_picture : false, to_user_id : null, device_id : null, connection_time : null, friends : null,
-  device_type : null, device_version : null, user : null, friend : {socket_id : null, user_id : null}
+  device_type : null, device_version : null, user : null, friend : {socket_id : null, user_id : null},
+  online : false
 };
 
 var chatObj = {
@@ -93,7 +95,11 @@ var chatObj = {
           // we tell the client to execute 'new_message'
           debug('new_message : ', socket.id);
           var pushTokens = [];
+          var pushAvailable = false;
           userData.friends.forEach(function (friend) {
+            if (friend.device_token) {
+              pushAvailable = true;
+            }
             pushTokens.push(friend.device_token);
           });
           var pushOptions = {
@@ -103,11 +109,17 @@ var chatObj = {
             text : '',
             android : {
               title : '번역 채팅',
-              text : ''
+              text : '',
+              payload : {
+                chat_room_id : socket.room_id
+              }
             },
             ios : {
               title : '번역 채팅',
-              text : ''
+              text : '',
+              payload : {
+                chat_room_id : socket.room_id
+              }
             }
           };
           var concatText;
@@ -152,7 +164,7 @@ var chatObj = {
                               debug('ko to zh-CHS translation error : ', err, userData.text);
                               socket.emit('new_message', {error : err, process : 'ko to zh-CHS translation'});
                             } else {
-                              concatText = userData.text + '<br />스페인어:[' + translatedToESResult + ']<br />중국어:[' + translatedToZhCNResult + ']';
+                              concatText = userData.text + '<br />es:[' + translatedToESResult + ']<br />ch:[' + translatedToZhCNResult + ']';
                               sqlite3.db.run(
                                 sqlite3.QUERIES.INSERT_CHAT_MESSGE,
                                 [socket.room_id, socket.user_id, concatText, userData.type],
@@ -164,11 +176,20 @@ var chatObj = {
                                       process : 'insert ko to zh-CHS translated chat message'
                                     });
                                   } else {
-                                    pushOptions.text = concatText;
-                                    pushOptions.android.text = concatText;
-                                    pushOptions.ios.text = concatText;
+                                    sqlite3.db.get(sqlite3.QUERIES.SELECT_USER_ONLINE_BY_USER_ID,
+                                      [userData.friends[0].user_id], function (err, row) {
+                                        if (err) {
+                                          debug('select user online state by user id error : ', err);
+                                        } else if (row && row.online === 0) {
+                                          pushOptions.text = concatText;
+                                          pushOptions.android.text = concatText;
+                                          pushOptions.ios.text = concatText;
 
-                                    pushNotification(pushOptions);
+                                          if (pushAvailable) {
+                                            pushNotification(pushOptions);
+                                          }
+                                        }
+                                      });
 
                                     socket.broadcast.to(socket.room_id).emit('new_message', {
                                       result : {
@@ -192,7 +213,7 @@ var chatObj = {
                       });
                     } else {
                       debug('no translate', userData.text);
-
+                      concatText = userData.text;
                       sqlite3.db.run(
                         sqlite3.QUERIES.INSERT_CHAT_MESSGE,
                         [socket.room_id, socket.user_id, userData.text, userData.type],
@@ -204,23 +225,32 @@ var chatObj = {
                               process : 'insert chat message'
                             });
                           } else {
-                            pushOptions.text = userData.text;
-                            pushOptions.android.text = userData.text;
-                            pushOptions.ios.text = userData.text;
+                            sqlite3.db.get(sqlite3.QUERIES.SELECT_USER_ONLINE_BY_USER_ID,
+                              [userData.friends[0].user_id], function (err, row) {
+                                if (err) {
+                                  debug('select user online state by user id error : ', err);
+                                } else if (row && row.online === 0) {
+                                  pushOptions.text = concatText;
+                                  pushOptions.android.text = concatText;
+                                  pushOptions.ios.text = concatText;
 
-                            pushNotification(pushOptions);
+                                  if (pushAvailable) {
+                                    pushNotification(pushOptions);
+                                  }
+                                }
+                              });
 
                             socket.broadcast.to(socket.room_id).emit('new_message', {
                               result : {
                                 user_name : socket.user_name,
-                                text : userData.text,
+                                text : concatText,
                                 type : userData.type
                               }
                             });
                             socket.emit('new_message', {
                               result : {
                                 user_name : socket.user_name,
-                                text : userData.text,
+                                text : concatText,
                                 type : userData.type
                               }
                             });
@@ -254,7 +284,7 @@ var chatObj = {
                         socket.emit('new_message', {error : err, process : detectedResult + ' to ko translation'});
                       } else {
                         debug('Translated ' + detectedResult + ' to ko result : ', translatedResult);
-                        concatText = userData.text + '<br />한국어:[' + translatedResult + ']';
+                        concatText = userData.text + '<br />ko:[' + translatedResult + ']';
                         sqlite3.db.run(
                           sqlite3.QUERIES.INSERT_CHAT_MESSGE,
                           [socket.room_id, socket.user_id, concatText, userData.type],
@@ -263,11 +293,20 @@ var chatObj = {
                               debug('insert ' + detectedResult + ' to ko translated chat message error : ', err, userData.text);
                               socket.emit('new_message', {error : err, process : 'insert translated chat message'});
                             } else {
-                              pushOptions.text = concatText;
-                              pushOptions.android.text = concatText;
-                              pushOptions.ios.text = concatText;
+                              sqlite3.db.get(sqlite3.QUERIES.SELECT_USER_ONLINE_BY_USER_ID,
+                                [userData.friends[0].user_id], function (err, row) {
+                                  if (err) {
+                                    debug('select user online state by user id error : ', err);
+                                  } else if (row && row.online === 0) {
+                                    pushOptions.text = concatText;
+                                    pushOptions.android.text = concatText;
+                                    pushOptions.ios.text = concatText;
 
-                              pushNotification(pushOptions);
+                                    if (pushAvailable) {
+                                      pushNotification(pushOptions);
+                                    }
+                                  }
+                                });
 
                               socket.broadcast.to(socket.room_id).emit('new_message', {
                                 result : {
@@ -294,6 +333,21 @@ var chatObj = {
           }
         }
       );
+
+      socket.on('updateUserOnlineState', function (userData) {
+        sqlite3.db.run(
+          sqlite3.QUERIES.UPDATE_USERS_SET_ONLINE_BY_USER_ID,
+          [userData.online, userData.user_id],
+          function (err) {
+            if (err) {
+              debug('update user online state error : ', err);
+              socket.emit('updatedUserOnlineState', {error : err, process : 'update user online state'});
+            } else {
+              socket.emit('updatedUserOnlineState', {result : 'OK'});
+            }
+          }
+        );
+      });
 
       /**
        * @prop {Number} messageData.read Is Message Read?
@@ -497,6 +551,21 @@ var chatObj = {
         );
       });
 
+      socket.on('retrieveChatRoomSettingsList', function (userData) {
+        sqlite3.db.get(
+          sqlite3.QUERIES.SELECT_ALL_CHAT_ROOM_SETTINGS_BY_USER_ID_AND_CHAT_ROOM_ID,
+          [userData.user_id, userData.chat_room_id],
+          function (err, row) {
+            if (err) {
+              debug('select all chat room settings error : ', err);
+              socket.emit('retrievedChatRoomSettingsList', {error : err, process : 'select all chat room settings'});
+            } else {
+              socket.emit('retrievedChatRoomSettingsList', {result : row});
+            }
+          }
+        );
+      });
+
       socket.on('updateChatRoomSettingsTranslateKo', function (userData) {
         if (userData.translate_ko !== null) {
           var chatRoomId = userData.chat_room_id || socket.room_id;
@@ -550,7 +619,7 @@ var chatObj = {
           sqlite3.QUERIES.INSERT_USER,
           [
             user_id, userData.user_name, userData.user_face, userData.device_token, userData.device_id,
-            userData.device_type, userData.device_version, socketId, currentTimeStamp, currentTimeStamp
+            userData.device_type, userData.device_version, socketId, userData.online, currentTimeStamp, currentTimeStamp
           ],
           function (err) {
             if (err) {

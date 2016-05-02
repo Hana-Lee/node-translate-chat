@@ -17,6 +17,7 @@ QUERIES.CREATE_USERS =
     'device_type VARCHAR(512) NOT NULL, ' +
     'device_version VARCHAR(512) NOT NULL, ' +
     'socket_id VARCHAR(255) NOT NULL, ' +
+    'online BOOLEAN NOT NULL CHECK (online IN (0, 1)), ' +
     'connection_time TIMESTAMP NOT NULL DEFAULT (STRFTIME(\'%s\', \'now\') || \'000\'), ' +
     'created TIMESTAMP NOT NULL DEFAULT (STRFTIME(\'%s\', \'now\') || \'000\'), ' +
     'PRIMARY KEY(user_id, user_name, device_id)' +
@@ -72,9 +73,9 @@ QUERIES.INSERT_USER =
   'INSERT INTO Users ' +
   '(' +
     'user_id, user_name, user_face, device_token, device_id, device_type, ' +
-    'device_version, socket_id, connection_time, created' +
+    'device_version, socket_id, online, connection_time, created' +
   ') ' +
-  'VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)';
+  'VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)';
 QUERIES.INSERT_FRIEND = 'INSERT INTO Friends (user_id, friend_id) VALUES (?, ?)';
 QUERIES.INSERT_CHAT_ROOM = 'INSERT INTO ChatRooms (chat_room_id) VALUES (?)';
 QUERIES.INSERT_CHAT_ROOM_USER = 'INSERT INTO ChatRoomUsers (chat_room_id, user_id) VALUES (?, ?)';
@@ -95,36 +96,38 @@ QUERIES.UPDATE_USERS_SET_USER_NAME_BY_USER_ID = 'UPDATE Users SET user_name = ? 
 QUERIES.UPDATE_USERS_SET_CONNECTION_TIME_BY_USER_ID =
   'UPDATE Users SET connection_time = ? WHERE user_id = ?';
 QUERIES.UPDATE_USERS_SET_SOCKET_ID_BY_USER_ID = 'UPDATE Users SET socket_id = ? WHERE user_id = ?';
+QUERIES.UPDATE_USERS_SET_ONLINE_BY_USER_ID = 'UPDATE Users SET online = ? WHERE user_id = ?';
 
+QUERIES.SELECT_USER_ONLINE_BY_USER_ID = 'SELECT online FROM Users WHERE user_id = ?';
 QUERIES.SELECT_USER_BY_USER_ID =
   'SELECT ' +
     'user_id, user_name, user_face, ' +
     'device_token, device_id, device_type, device_version, ' +
-    'socket_id, connection_time, created ' +
+    'socket_id, online, connection_time, created ' +
   'FROM Users WHERE user_id = ?';
 QUERIES.SELECT_USER_BY_USER_NAME =
   'SELECT ' +
     'user_id, user_name, user_face, ' +
     'device_token, device_id, device_type, device_version, ' +
-    'socket_id, connection_time, created ' +
+    'socket_id, online, connection_time, created ' +
   'FROM Users WHERE user_name = ?';
 QUERIES.SELECT_USER_BY_DEVICE_ID =
   'SELECT ' +
     'user_id, user_name, user_face, ' +
     'device_token, device_id, device_type, device_version, ' +
-    'socket_id, connection_time, created ' +
+    'socket_id, online, connection_time, created ' +
   'FROM Users WHERE device_id = ?';
 QUERIES.SELECT_ALL_USERS =
   'SELECT ' +
     'user_id, user_name, user_face, ' +
     'device_token, device_id, device_type, device_version, ' +
-    'socket_id, connection_time, created ' +
+    'socket_id, online, connection_time, created ' +
   'FROM Users ORDER BY user_name DESC';
 QUERIES.SELECT_ALL_FRIENDS_BY_USER_ID =
   'SELECT ' +
     'u.user_id, u.user_name, u.user_face, u.device_token, ' +
     'u.device_id, u.device_type, u.device_version, u.socket_id, ' +
-    'u.connection_time, f.created ' +
+    'u.online, u.connection_time, f.created ' +
   'FROM Friends AS f ' +
   'JOIN Users AS u ON f.friend_id = u.user_id ' +
   'WHERE f.user_id = ? ' +
@@ -137,7 +140,7 @@ QUERIES.SELECT_TO_USER_ID_BY_CHAT_ROOM_ID_AND_USER_ID =
   'WHERE chat_room_id = ? AND user_id <> ?';
 
 QUERIES.SELECT_ALL_CHAT_ROOM_IDS_AND_FRIEND_ID_AND_LAST_MESSAGE_BY_USER_ID =
-  'SELECT cu.chat_room_id, cu.user_id AS friend_id, cm.text AS last_text, MAX(cm.created) AS date ' +
+  'SELECT cu.chat_room_id, cu.user_id AS friend_id, cm.text AS last_text, MAX(cm.created) AS created ' +
   'FROM ChatRoomUsers AS cu, ChatMessages AS cm ' +
   'ON cu.chat_room_id = cm.chat_room_id ' +
   'WHERE cu.chat_room_id in (SELECT chat_room_id FROM ChatRoomUsers WHERE user_id = $userId) ' +
@@ -171,6 +174,8 @@ QUERIES.SELECT_CHAT_ROOM_ID_BY_USER_ID =
 QUERIES.SELECT_CHAT_ROOM_SETTINGS_BY_CHAT_ROOM_ID_AND_USER_ID =
   'SELECT chat_room_id, user_id, translate_ko, show_picture FROM ChatRoomSettings ' +
   'WHERE chat_room_id = ? AND user_id = ?';
+QUERIES.SELECT_ALL_CHAT_ROOM_SETTINGS_BY_USER_ID_AND_CHAT_ROOM_ID =
+  'SELECT chat_room_id, translate_ko, show_picture FROM ChatRoomSettings WHERE user_id = ? AND chat_room_id = ?';
 
 QUERIES.DELETE_USER_BY_ID = 'DELETE FROM Users WHERE user_id = ?';
 QUERIES.DELETE_FRIEND_BY_USER_ID_AND_FRIEND_ID = 'DELETE FROM Friends WHERE user_id = ? AND friend_id = ?';
