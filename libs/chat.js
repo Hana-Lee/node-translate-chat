@@ -226,6 +226,12 @@ var chatObj = {
                                 pushOptions.android.text = concatText;
                                 pushOptions.ios.text = concatText;
 
+                                if (imageType) {
+                                  pushOptions.text = '< 사진 >';
+                                  pushOptions.android.text = '< 사진 >';
+                                  pushOptions.ios.text = '< 사진 >';
+                                }
+
                                 if (pushAvailable) {
                                   pushNotification(pushOptions);
                                 }
