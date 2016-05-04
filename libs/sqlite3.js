@@ -162,11 +162,13 @@ QUERIES.SELECT_ALL_LAST_MESSAGE_BY_CHAT_ROOM_ID_AND_USER_ID =
   'WHERE user_id = ? AND chat_room_id in ($room_ids) ' +
   'GROUP BY chat_room_id ORDER BY created DESC';
 QUERIES.SELECT_ALL_CHAT_MESSAGES_BY_CHAT_ROOM_ID =
-  'SELECT ' +
-    'chat_message_id, chat_room_id, user_id, text, ' +
-    'type, read, read_time, created ' +
-  'FROM ChatMessages ' +
-  'WHERE chat_room_id = ? ORDER BY created ASC LIMIT 30';
+  'SELECT * FROM (' +
+    'SELECT ' +
+      'chat_message_id, chat_room_id, user_id, text, ' +
+      'type, read, read_time, created ' +
+    'FROM ChatMessages ' +
+    'WHERE chat_room_id = ? ORDER BY created DESC LIMIT 40' +
+  ') ORDER BY created ASC';
 QUERIES.SELECT_CHAT_ROOM_ID_BY_USER_ID_AND_TO_USER_ID = 
   'SELECT chat_room_id FROM ChatRoomUsers WHERE user_id in (?, ?) GROUP BY chat_room_id';
 QUERIES.SELECT_CHAT_ROOM_ID_BY_USER_ID = 
