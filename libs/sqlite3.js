@@ -11,7 +11,7 @@ QUERIES.CREATE_USERS =
   'CREATE TABLE IF NOT EXISTS Users(' +
     'user_id VARCHAR(255) NOT NULL, ' +
     'user_name VARCHAR(255) NOT NULL, ' +
-    'user_face VARCHAR(255) NOT NULL DEFAULT \'img/sarah.png\' , ' +
+    'user_face VARCHAR(255) NOT NULL DEFAULT \'assets/img/sarah.png\' , ' +
     'device_token VARCHAR(1024) NOT NULL, ' +
     'device_id VARCHAR(512) NOT NULL, ' +
     'device_type VARCHAR(512) NOT NULL, ' +

@@ -19,14 +19,8 @@ var pushNotification = function (options) {
     'notification' : {
       'title' : options.title || '번역채팅',
       'message' : options.text,
-      'android' : {
-        'title' : options.android.title || '번역채팅',
-        'message' : options.android.text
-      },
-      'ios' : {
-        'title' : options.ios.title || '번역채팅',
-        'message' : options.ios.text
-      }
+      'android' : options.android,
+      'ios' : options.ios
     }
   };
 
