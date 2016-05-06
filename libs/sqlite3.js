@@ -97,6 +97,7 @@ QUERIES.UPDATE_USERS_SET_CONNECTION_TIME_BY_USER_ID =
   'UPDATE Users SET connection_time = ? WHERE user_id = ?';
 QUERIES.UPDATE_USERS_SET_SOCKET_ID_BY_USER_ID = 'UPDATE Users SET socket_id = ? WHERE user_id = ?';
 QUERIES.UPDATE_USERS_SET_ONLINE_BY_USER_ID = 'UPDATE Users SET online = ? WHERE user_id = ?';
+QUERIES.UPDATE_USERS_SET_DEVICE_TOKEN_BY_USER_ID = 'UPDATE Users SET device_token = ? WHERE user_id = ?';
 
 QUERIES.SELECT_USER_ONLINE_BY_USER_ID = 'SELECT online FROM Users WHERE user_id = ?';
 QUERIES.SELECT_USER_BY_USER_ID =
@@ -145,8 +146,6 @@ QUERIES.SELECT_ALL_CHAT_ROOM_IDS_AND_FRIEND_ID_AND_LAST_MESSAGE_BY_USER_ID =
   'ON cu.chat_room_id = cm.chat_room_id ' +
   'WHERE cu.chat_room_id in (SELECT chat_room_id FROM ChatRoomUsers WHERE user_id = $userId) ' +
   'AND cu.user_id <> $userId';
-QUERIES.SELECT_ALL_CHAT_ROOM_IDS_BY_USER_ID =
-  'SELECT chat_room_id FROM ChatRoomUsers WHERE user_id = ? ORDER BY created DESC';
 QUERIES.SELECT_ALL_CHAT_ROOM_USERS_BY_CHAT_ROOM_ID = 
   'SELECT chat_room_id, user_id FROM ChatRoomUsers WHERE chat_room_id = ?';
 QUERIES.SELECT_LAST_MESSAGE_BY_CHAT_ROOM_ID_AND_USER_ID =
@@ -169,7 +168,7 @@ QUERIES.SELECT_ALL_CHAT_MESSAGES_BY_CHAT_ROOM_ID =
     'FROM ChatMessages ' +
     'WHERE chat_room_id = ? ORDER BY created DESC LIMIT 40' +
   ') ORDER BY created ASC';
-QUERIES.SELECT_CHAT_ROOM_ID_BY_USER_ID_AND_TO_USER_ID = 
+QUERIES.SELECT_CHAT_ROOM_ID_BY_USER_ID_AND_FRIEND_ID = 
   'SELECT chat_room_id FROM ChatRoomUsers WHERE user_id in (?, ?) GROUP BY chat_room_id';
 QUERIES.SELECT_CHAT_ROOM_ID_BY_USER_ID = 
   'SELECT chat_room_id FROM ChatRoomUsers WHERE user_id = ? LIMIT 1';

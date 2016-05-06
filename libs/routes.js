@@ -4,7 +4,7 @@
  */
 'use strict';
 
-var chat = require('./chat');
+var chat = require('./socket-service');
 var path = require('path');
 var mime = require('mime');
 var fs = require('fs');

@@ -16,7 +16,6 @@ var sqlite3 = require('./sqlite3');
 var debug = require('debug')('node-translate-chat:chat');
 var md5 = require('md5');
 
-var dummyChatRoomId = undefined;
 var _seed = undefined;
 
 function createUID(value) {
@@ -62,7 +61,25 @@ var chatObj = {
     io.on('connection', function (/** @param {Object} socket.broadcast */socket) {
       debug('socket connection : ', socket.id);
 
+      var userId = socket.handshake.query.user_id;
+      debug('connection user id : ', userId);
+      if (userId) {
+        var socketId = socket.id;
+        sqlite3.db.serialize(function () {
+          sqlite3.db.run(
+            sqlite3.QUERIES.UPDATE_USERS_SET_SOCKET_ID_BY_USER_ID,
+            [socketId, userId],
+            function (err) {
+              if (err) {
+                debug('update users set socket error : ', err);
+              }
+            }
+          );
+        });
+      }
+
       socket.on('updateSocketId', function (userData) {
+        console.log('update socket id', userData);
         var socketId = socket.id;
         sqlite3.db.serialize(function () {
           sqlite3.db.run(
@@ -70,7 +87,23 @@ var chatObj = {
             [socketId, userData.user_id],
             function (err) {
               if (err) {
-                debug('update users set socket error : ', err);
+                debug('update users set socket id error : ', err);
+                socket.emit('updatedSocketId', {error : err, process : 'update socket id'});
+              }
+            }
+          );
+        });
+      });
+
+      socket.on('updateDeviceToken', function (userData) {
+        sqlite3.db.serialize(function () {
+          sqlite3.db.run(
+            sqlite3.QUERIES.UPDATE_USERS_SET_DEVICE_TOKEN_BY_USER_ID,
+            [userData.user.device_token, userData.user.user_id],
+            function (err) {
+              if (err) {
+                debug('update users set device token error : ', err);
+                socket.emit('updatedDeviceToken', {error : err, process : 'update device token'});
               }
             }
           );
@@ -393,21 +426,8 @@ var chatObj = {
               [userData.user.user_id, userData.friend.user_id],
               function (err) {
                 if (err) {
-                  debug('create friend 1 error : ', err);
-                  socket.emit('createdFriend', {error : err, process : 'create 1 friend'});
-                  hasError = true;
-                }
-              }
-            );
-          }
-          if (!hasError) {
-            sqlite3.db.run(
-              sqlite3.QUERIES.INSERT_FRIEND,
-              [userData.friend.user_id, userData.user.user_id],
-              function (err) {
-                if (err) {
-                  debug('create friend 2 error : ', err);
-                  socket.emit('createdFriend', {error : err, process : 'create friend 2'});
+                  debug('create friend error : ', err);
+                  socket.emit('createdFriend', {error : err, process : 'create friend'});
                   hasError = true;
                 }
               }
@@ -446,6 +466,17 @@ var chatObj = {
             socket.emit('retrievedUserByUserId', {error : err, process : 'select user by user id'});
           } else {
             socket.emit('retrievedUserByUserId', {result : row});
+          }
+        });
+      });
+
+      socket.on('retrieveUserByUserName', function (userData) {
+        sqlite3.db.get(sqlite3.QUERIES.SELECT_USER_BY_USER_NAME, [userData.user_name], function (err, row) {
+          if (err) {
+            debug('select user by user name error : ', err);
+            socket.emit('retrievedUserByUserName', {error : err, process : 'select user by user name'});
+          } else {
+            socket.emit('retrievedUserByUserName', {result : row});
           }
         });
       });
@@ -494,21 +525,6 @@ var chatObj = {
             } else {
               debug('retrieved all users', rows);
               socket.emit('retrievedAllUsers', {result : rows});
-            }
-          }
-        );
-      });
-
-      socket.on('retrieveAllChatRoomIds', function (userData) {
-        sqlite3.db.all(
-          sqlite3.QUERIES.SELECT_ALL_CHAT_ROOM_IDS_BY_USER_ID,
-          [userData.user_id],
-          function (err, rows) {
-            if (err) {
-              debug('retrieve all chat rooms error : ', err);
-              socket.emit('retrievedAllChatRoomIds', {error : err, process : 'retrieveAllChatRoomIds'});
-            } else {
-              socket.emit('retrievedAllChatRoomIds', {result : rows});
             }
           }
         );
@@ -631,20 +647,6 @@ var chatObj = {
         );
       });
 
-      socket.on('createChatRoom', function () {
-        var chatRoomId = createUID('chat_room_id');
-        dummyChatRoomId = chatRoomId;
-
-        sqlite3.db.run(sqlite3.QUERIES.INSERT_CHAT_ROOM, [chatRoomId], function (err) {
-          if (err) {
-            debug('insert chat room error : ', err);
-            socket.emit('createdChatRoom', {error : err, process : 'createdChatRoom'});
-          } else {
-            socket.emit('createdChatRoom', {result : {chat_room_id : chatRoomId}});
-          }
-        });
-      });
-
       socket.on('retrieveAllChatRoomIdsAndFriendIdAndLastTextByUserId', function (userData) {
         sqlite3.db.all(
           sqlite3.QUERIES.SELECT_ALL_CHAT_ROOM_IDS_AND_FRIEND_ID_AND_LAST_MESSAGE_BY_USER_ID,
@@ -663,140 +665,86 @@ var chatObj = {
         );
       });
 
-      socket.on('retrieveChatRoomIdByUserIdAndToUserId', function (userData) {
-        sqlite3.db.get(
-          sqlite3.QUERIES.SELECT_CHAT_ROOM_ID_BY_USER_ID_AND_TO_USER_ID,
-          [userData.user_id, userData.to_user_id],
-          function (err, row) {
-            if (err) {
-              debug('select chat room id by user id error : ', err, userData);
-              socket.emit('retrievedChatRoomIdByUserIdAndToUserId', {
-                error : err,
-                process : 'retrievedChatRoomIdByUserIdAndToUserId'
-              });
-            } else {
-              socket.emit('retrievedChatRoomIdByUserIdAndToUserId', {result : row});
-            }
+      function _joinChatRoom(userData) {
+        socket.room_id = userData.chat_room_id;
+        socket.join(userData.chat_room_id);
+
+        // we store the user_name in the socket session for this client
+        socket.user_name = userData.user.user_name;
+
+        socket.emit('joinedChatRoom', {
+          result : {
+            chat_room_id : userData.chat_room_id
           }
-        );
-      });
+        });
+      }
 
       // when the client emits 'add user', this listens and executes
       socket.on('joinChatRoom', function (userData) {
-        if (!userData.chat_room_id) {
-          userData.chat_room_id = dummyChatRoomId
-        }
-
-        var hasError = false;
-
-        sqlite3.db.serialize(function () {
-          sqlite3.db.get(
-            sqlite3.QUERIES.SELECT_CHAT_ROOM_SETTINGS_BY_CHAT_ROOM_ID_AND_USER_ID,
-            [userData.chat_room_id, userData.user_id],
-            function (err, row) {
-              if (err) {
-                debug('select chat room settings error : ', err);
-                socket.emit('joinedChatRoom', {error : err, process : 'select chat room settings'});
-                hasError = true;
-              } else if (!row) {
-                sqlite3.db.run(
-                  sqlite3.QUERIES.INSERT_CHAT_ROOM_SETTINGS,
-                  [userData.chat_room_id, userData.user_id, 0, 0],
-                  function (err) {
-                    if (err) {
-                      debug('insert chat room settings error : ', err);
-                      socket.emit('joinedChatRoom', {error : err, process : 'insert chat room settings'});
-                      hasError = true;
-                    }
-                  }
-                );
-              }
-            }
-          );
-
-          if (!hasError) {
+        var chatRoomId = userData.chat_room_id;
+        if (!chatRoomId) {
+          sqlite3.db.serialize(function () {
             sqlite3.db.get(
-              sqlite3.QUERIES.SELECT_CHAT_ROOM_ID_BY_USER_ID,
-              [userData.user_id],
+              sqlite3.QUERIES.SELECT_CHAT_ROOM_ID_BY_USER_ID_AND_FRIEND_ID,
+              [userData.user.user_id, userData.friend.user_id],
               function (err, row) {
                 if (err) {
-                  debug('join chat room - select chat room id by user id error : ', err, userData);
-                  socket.emit('joinedChatRoom', {error : err, process : 'select chat room id by user id'});
-                  hasError = true;
+                  debug('select chat room id by user id and friend id error : ', err, userData);
+                  socket.emit('joinedChatRoom', {
+                    error : err,
+                    process : 'select chat room id by user id and friend id'
+                  });
                 } else {
-                  if (!row) {
-                    sqlite3.db.run(
-                      sqlite3.QUERIES.INSERT_CHAT_ROOM_USER,
-                      [userData.chat_room_id, userData.user_id],
-                      function (err) {
+                  if (row) {
+                    debug('chat room already exists', userData);
+                    chatRoomId = row.chat_room_id;
+                    userData.chat_room_id = chatRoomId;
+                    _joinChatRoom(userData);
+                  } else {
+                    chatRoomId = createUID('chat_room_id');
+                    sqlite3.db.serialize(function () {
+                      sqlite3.db.run(sqlite3.QUERIES.INSERT_CHAT_ROOM, [chatRoomId], function (err) {
                         if (err) {
-                          debug('join chat room - insert chat room user error : ', err);
-                          socket.emit('joinedChatRoom', {error : err, process : 'insert "user" to chat room'});
-                          hasError = true;
+                          debug('insert chat room error : ', err);
+                          socket.emit('joinedChatRoom', {error : err, process : 'create new chat room'});
                         } else {
-                          debug('insert "user" to chat room users table', userData);
+                          debug('create new chat room', chatRoomId, userData);
                         }
-                      }
-                    );
+                      });
+
+                      sqlite3.db.run(
+                        sqlite3.QUERIES.INSERT_CHAT_ROOM_SETTINGS,
+                        [chatRoomId, userData.user.user_id, 0, 0],
+                        function (err) {
+                          if (err) {
+                            debug('insert chat room settings error : ', err);
+                            socket.emit('joinedChatRoom', {error : err, process : 'insert chat room settings'});
+                          } else {
+                            debug('create new chat room setting', chatRoomId, userData);
+                          }
+                        }
+                      );
+
+                      sqlite3.db.run(
+                        sqlite3.QUERIES.INSERT_CHAT_ROOM_USER,
+                        [chatRoomId, userData.user.user_id],
+                        function (err) {
+                          if (err) {
+                            debug('join chat room - insert chat room user error : ', err);
+                            socket.emit('joinedChatRoom', {error : err, process : 'insert "user" to chat room'});
+                          } else {
+                            debug('insert "user" to chat room users table', userData);
+                          }
+                        }
+                      );
+                    });
                   }
                 }
               }
             );
-
-            if (!hasError && userData.to_user_id) {
-              sqlite3.db.get(
-                sqlite3.QUERIES.SELECT_CHAT_ROOM_ID_BY_USER_ID,
-                [userData.to_user_id],
-                function (err, row) {
-                  if (err) {
-                    debug('join chat room - select chat room id by to user id error : ', err, userData);
-                    socket.emit('joinedChatRoom', {error : err, process : 'select chat room id by "to user" id'});
-                    hasError = true;
-                  } else {
-                    if (!row) {
-                      sqlite3.db.run(
-                        sqlite3.QUERIES.INSERT_CHAT_ROOM_USER,
-                        [userData.chat_room_id, userData.to_user_id],
-                        function (err) {
-                          if (err) {
-                            debug('insert to user to chat room error : ', err);
-                            socket.emit('joinedChatRoom', {
-                              error : err,
-                              process : 'insert "to user" to chat room users'
-                            });
-                            hasError = true;
-                          } else {
-                            debug('insert "to user" to chat room users table', userData);
-                          }
-                        }
-                      );
-                    }
-                  }
-                }
-              );
-            }
-          }
-        });
-
-        if (!hasError) {
-          socket.room_id = userData.chat_room_id;
-          socket.join(userData.chat_room_id);
-
-          debug('join chat room : ', userData.chat_room_id);
-
-          debug('add user ', userData);
-
-          // we store the user_name in the socket session for this client
-          socket.user_name = userData.user_name;
-          ++numUsers;
-          socket.emit('joinedChatRoom', {
-            numUsers : numUsers
           });
-          // echo globally (all clients) that a person has connected
-          io.in(userData.chat_room_id).emit('user joined', {
-            user_name : socket.user_name,
-            numUsers : numUsers
-          });
+        } else {
+          _joinChatRoom(userData);
         }
       });
 
