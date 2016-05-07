@@ -99,6 +99,7 @@ QUERIES.UPDATE_USERS_SET_SOCKET_ID_BY_USER_ID = 'UPDATE Users SET socket_id = ? 
 QUERIES.UPDATE_USERS_SET_ONLINE_BY_USER_ID = 'UPDATE Users SET online = ? WHERE user_id = ?';
 QUERIES.UPDATE_USERS_SET_DEVICE_TOKEN_BY_USER_ID = 'UPDATE Users SET device_token = ? WHERE user_id = ?';
 
+QUERIES.SELECT_DEVICE_TOKEN_BY_USER_ID = 'SELECT device_token FROM Users WHERE user_id = ?';
 QUERIES.SELECT_USER_ONLINE_BY_USER_ID = 'SELECT online FROM Users WHERE user_id = ?';
 QUERIES.SELECT_USER_BY_USER_ID =
   'SELECT ' +
@@ -135,11 +136,6 @@ QUERIES.SELECT_ALL_FRIENDS_BY_USER_ID =
   'ORDER BY u.user_name DESC';
 QUERIES.SELECT_FRIEND_BY_USER_ID_AND_FRIEND_ID =
   'SELECT * FROM Friends WHERE user_id = ? AND friend_id = ?';
-
-QUERIES.SELECT_TO_USER_ID_BY_CHAT_ROOM_ID_AND_USER_ID =
-  'SELECT user_id FROM ChatRoomUsers ' +
-  'WHERE chat_room_id = ? AND user_id <> ?';
-
 QUERIES.SELECT_ALL_CHAT_ROOM_IDS_AND_FRIEND_ID_AND_LAST_MESSAGE_BY_USER_ID =
   'SELECT cu.chat_room_id, cu.user_id AS friend_id, cm.text AS last_text, MAX(cm.created) AS created ' +
   'FROM ChatRoomUsers AS cu, ChatMessages AS cm ' +

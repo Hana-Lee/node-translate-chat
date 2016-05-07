@@ -25,6 +25,7 @@
   "homepage": "https://github.com/Hana-Lee/node-translate-chat#readme",
   "dependencies": {
     "body-parser": "^1.15.0",
+    "caller-id": "^0.1.0",
     "cookie-parser": "^1.4.1",
     "debug": "^2.2.0",
     "errorhandler": "^1.4.3",
