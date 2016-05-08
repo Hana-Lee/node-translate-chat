@@ -32,7 +32,7 @@
 
   function createUID(value) {
     if (!seed) {
-      seed = (new Date()).valueOf();
+      seed = new Date().getTime();
     }
     seed++;
 
