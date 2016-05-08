@@ -149,13 +149,6 @@ QUERIES.SELECT_LAST_MESSAGE_BY_CHAT_ROOM_ID_AND_USER_ID =
     'text, type, read, read_time, created ' +
   'FROM ChatMessages ' +
   'WHERE chat_room_id = ? AND user_id = ? ORDER BY created DESC';
-QUERIES.SELECT_ALL_LAST_MESSAGE_BY_CHAT_ROOM_ID_AND_USER_ID = 
-  'SELECT MAX(created) AS max, ' +
-    'chat_room_id, ' +
-    'text, type, read, read_time, created ' +
-  'FROM ChatMessages ' +
-  'WHERE user_id = ? AND chat_room_id in ($room_ids) ' +
-  'GROUP BY chat_room_id ORDER BY created DESC';
 QUERIES.SELECT_ALL_CHAT_MESSAGES_BY_CHAT_ROOM_ID =
   'SELECT * FROM (' +
     'SELECT ' +
