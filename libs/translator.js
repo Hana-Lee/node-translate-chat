@@ -29,7 +29,7 @@
     _mTranslate(options.text, options.from, 'en').then(function (result) {
       _mTranslate(result, 'en', 'ja').then(function (result) {
         _nTranslate(result, 'ja', options.to).then(function (result) {
-          callback(null, result);
+          callback(result);
         });
       });
     }).catch(function (error) {
@@ -49,7 +49,7 @@
     _nTranslate(options.text, options.from, 'ja').then(function (result) {
       _mTranslate(result, 'ja', 'en').then(function (result) {
         _mTranslate(result, 'en', options.to).then(function (result) {
-          callback(null, result);
+          callback(result);
         });
       });
     }).catch(function (error) {
@@ -89,7 +89,13 @@
    * @param {Function} callback
    */
   function detect(options, callback) {
-    mTranslator.detect(options, callback);
+    mTranslator.detect(options, function (error, result) {
+      if (error) {
+        debug('language detect error : ', error);
+      } else {
+        callback(result);
+      }
+    });
   }
 
   module.exports = {

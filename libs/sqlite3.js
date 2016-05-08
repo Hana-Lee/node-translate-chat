@@ -137,7 +137,7 @@ QUERIES.SELECT_ALL_FRIENDS_BY_USER_ID =
 QUERIES.SELECT_FRIEND_BY_USER_ID_AND_FRIEND_ID =
   'SELECT * FROM Friends WHERE user_id = ? AND friend_id = ?';
 QUERIES.SELECT_ALL_CHAT_ROOM_IDS_AND_FRIEND_ID_AND_LAST_MESSAGE_BY_USER_ID =
-  'SELECT cu.chat_room_id, cu.user_id AS friend_id, cm.text AS last_text, MAX(cm.created) AS created ' +
+  'SELECT cu.chat_room_id, cu.user_id AS to_user_id, cm.text AS last_text, MAX(cm.created) AS created ' +
   'FROM ChatRoomUsers AS cu, ChatMessages AS cm ' +
   'ON cu.chat_room_id = cm.chat_room_id ' +
   'WHERE cu.chat_room_id in (SELECT chat_room_id FROM ChatRoomUsers WHERE user_id = $userId) ' +
@@ -158,7 +158,9 @@ QUERIES.SELECT_ALL_CHAT_MESSAGES_BY_CHAT_ROOM_ID =
     'WHERE chat_room_id = ? ORDER BY created DESC LIMIT 40' +
   ') ORDER BY created ASC';
 QUERIES.SELECT_CHAT_ROOM_ID_BY_USER_ID_AND_FRIEND_ID = 
-  'SELECT chat_room_id FROM ChatRoomUsers WHERE user_id in (?, ?) GROUP BY chat_room_id';
+  'SELECT cru1.chat_room_id FROM ChatRoomUsers cru1, ChatRoomUsers cru2 ' +
+    'ON cru1.chat_room_id = cru2.chat_room_id ' +
+  'WHERE cru1.user_id = ? AND cru2.user_id = ?';
 QUERIES.SELECT_CHAT_ROOM_ID_BY_USER_ID = 
   'SELECT chat_room_id FROM ChatRoomUsers WHERE user_id = ? LIMIT 1';
 QUERIES.SELECT_CHAT_ROOM_SETTINGS_BY_CHAT_ROOM_ID_AND_USER_ID =
