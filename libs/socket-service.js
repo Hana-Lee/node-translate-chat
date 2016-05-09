@@ -140,7 +140,7 @@
   function registerSocketEvent(socket) {
     socket.on('updateSocketId', onUpdateSocketId);
     socket.on('updateDeviceToken', onUpdateDeviceToken);
-    socket.on('new_message', onNewMessage);
+    socket.on('newMessage', onNewMessage);
     socket.on('updateUserOnlineState', onUpdateUserOnlineState);
     socket.on('updateChatMessage', onUpdateChatMessage);
     socket.on('createFriend', onCreateFriend);
@@ -176,14 +176,14 @@
     }
 
     function onNewMessage(/** @type {String} */userData) {
-      debug('new_message : ', userData);
+      debug('newMessage : ', userData);
 
       if (!socket.chat_room_id) {
         socket.chat_room_id = userData.chat_room_id;
         socket.join(userData.chat_room_id);
       }
 
-      var concatText, emit = 'new_message';
+      var concatText, emit = 'newMessage';
       var isOnlyImage = isImageType(userData.type);
       var isOnlyKorean = isKoreanText(userData.text);
       var isOnlyEmoji = isEmojiText(userData.text);
@@ -268,7 +268,7 @@
 
       function saveChatMessage() {
         var query = sqlite3.QUERIES.INSERT_CHAT_MESSGE;
-        var params = [userData.chat_room_id, userData.user_id, concatText, userData.type];
+        var params = [userData.chat_room_id, userData.user.user_id, concatText, userData.type];
         sqlite3.db.run(query, params, insertChatMessageCb);
       }
 
@@ -282,16 +282,16 @@
       }
 
       function broadcastMessage() {
-        socket.broadcast.to(userData.chat_room_id).emit('new_message', {
+        socket.broadcast.to(userData.chat_room_id).emit(emit, {
           result : {
-            user_name : userData.user_name,
+            user_name : userData.user.user_name,
             text : concatText,
             type : userData.type
           }
         });
-        socket.emit('new_message', {
+        socket.emit(emit, {
           result : {
-            user_name : userData.user_name,
+            user_name : userData.user.user_name,
             text : concatText,
             type : userData.type
           }
