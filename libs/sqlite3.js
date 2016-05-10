@@ -185,10 +185,10 @@ QUERIES.SELECT_CHAT_ROOM_SETTINGS_BY_CHAT_ROOM_ID_AND_USER_ID =
   'SELECT chat_room_id, user_id, setting_value FROM ChatRoomSettings ' +
   'WHERE chat_room_id = ? AND user_id = ? AND setting_key = ?';
 QUERIES.SELECT_ALL_CHAT_ROOM_SETTINGS_BY_USER_ID_AND_CHAT_ROOM_ID =
-  'SELECT c.chat_room_id, c.setting_key, c.setting_value, m.setting_name, m.setting_type ' +
+  'SELECT m.setting_master_id, c.chat_room_id, c.setting_key, c.setting_value, m.setting_name, m.setting_type ' +
   'FROM ChatRoomSettings c, ChatRoomSettingMaster m ' +
     'ON c.setting_key = m.setting_key ' +
-  'WHERE c.user_id = ? AND c.chat_room_id = ?';
+  'WHERE c.user_id = ? AND c.chat_room_id = ? ORDER BY m.setting_master_id';
 QUERIES.SELECT_ALL_CHAT_ROOM_SETTING_MASTER =
   'SELECT setting_key, setting_name, setting_type, default_value FROM ChatRoomSettingMaster';
 

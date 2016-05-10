@@ -107,9 +107,9 @@
             errorHandler(socket, '', err, 'select device token error');
           } else if (row && !online) {
             pushOptions.tokens.push(row.device_token);
-            pushOptions.text = userData.user_name + ':' + userData.text;
-            pushOptions.android.text = userData.user_name + ':' + userData.text;
-            pushOptions.ios.text = userData.user_name + ':' + userData.text;
+            pushOptions.text = userData.user.user_name + ':' + userData.text;
+            pushOptions.android.text = userData.user.user_name + ':' + userData.text;
+            pushOptions.ios.text = userData.user.user_name + ':' + userData.text;
 
             pushNotification(pushOptions);
           }
@@ -207,7 +207,9 @@
           var query = sqlite3.QUERIES.SELECT_CHAT_ROOM_SETTINGS_BY_CHAT_ROOM_ID_AND_USER_ID;
           var params = [userData.chat_room_id, userData.to_user.user_id, 'translate_ko'];
           sqlite3.db.get(query, params, function (err, /** @prop {Number} setting_value */row) {
-            if (row && row.setting_value === 1) {
+            debug('user settings : ', row);
+            //noinspection JSValidateTypes
+            if (row && row.setting_value === '1') {
               resolve('OK');
             } else {
               reject('NO');
