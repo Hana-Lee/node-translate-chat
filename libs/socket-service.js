@@ -150,9 +150,11 @@
     socket.on('retrieveAllUsers', onRetrieveAllUsers);
     socket.on('retrieveAllChatMessagesByChatRoomId', onRetrieveAllChatMessagesByChatRoomId);
     socket.on('retrieveChatRoomSettingsList', onRetrieveChatRoomSettingsList);
-    socket.on('updateChatRoomSettingsTranslateKo', onUpdateChatRoomSettingsTranslateKo);
+    socket.on('updateChatRoomSettings', onUpdateChatRoomSettings);
     socket.on('createUser', onCreateUser);
     socket.on('retrieveAllChatRoomByUserId', onRetrieveAllChatRoomByUserId);
+    socket.on('retrieveChatRoomId', onRetrieveChatRoomId);
+    socket.on('createChatRoom', onCreateChatRoom);
     socket.on('joinChatRoom', onJoinChatRoom);
     socket.on('typing', onTyping);
     socket.on('stop_typing', onStopTyping);
@@ -203,9 +205,9 @@
       function koreanToOtherLanguageTranslateAvailable() {
         return new Promise(function (resolve, reject) {
           var query = sqlite3.QUERIES.SELECT_CHAT_ROOM_SETTINGS_BY_CHAT_ROOM_ID_AND_USER_ID;
-          var params = [userData.chat_room_id, userData.to_user.user_id];
-          sqlite3.db.get(query, params, function (err, /** @prop {Number} translate_ko */row) {
-            if (row && row.translate_ko === 1) {
+          var params = [userData.chat_room_id, userData.to_user.user_id, 'translate_ko'];
+          sqlite3.db.get(query, params, function (err, /** @prop {Number} setting_value */row) {
+            if (row && row.setting_value === 1) {
               resolve('OK');
             } else {
               reject('NO');
@@ -447,47 +449,38 @@
       var emit = 'retrievedChatRoomSettingsList';
       var query = sqlite3.QUERIES.SELECT_ALL_CHAT_ROOM_SETTINGS_BY_USER_ID_AND_CHAT_ROOM_ID;
       var params = [userData.user_id, userData.chat_room_id];
-      sqlite3.db.get(query, params, callback);
+      sqlite3.db.all(query, params, callback);
 
-      function callback(err, row) {
+      function callback(err, rows) {
         if (err) {
           errorHandler(socket, emit, err, 'select all chat room settings error');
         } else {
-          socket.emit(emit, {result : row});
+          socket.emit(emit, {result : rows});
         }
       }
     }
 
-    function onUpdateChatRoomSettingsTranslateKo(userData) {
-      var emit, query, params;
-      if (userData.translate_ko !== null) {
-        var chatRoomId = userData.chat_room_id || userData.chat_room_id;
-        emit = 'updatedChatRoomSettingsTranslateKo';
-        query = sqlite3.QUERIES.UPDATE_CHAT_ROOM_SETTINGS_SET_TRANSLATE_KO_BY_CHAT_ROOM_ID_AND_USER_ID;
-        params = [userData.translate_ko, chatRoomId, userData.user_id];
-        sqlite3.db.run(query, params, updateTranslateCb);
-      }
+    function onUpdateChatRoomSettings(userData) {
+      var emit = 'updatedChatRoomSettings';
+      var chatRoomId = userData.chat_room_id;
+      var userId = userData.user.user_id;
+      var updateCount = 0;
 
-      if (userData.show_picture !== null) {
-        emit = 'updatedChatRoomSettingsShowPicture';
-        query = sqlite3.QUERIES.UPDATE_CHAT_ROOM_SETTINGS_SET_SHOW_PICTURE_BY_CHAT_ROOM_ID_AND_USER_ID;
-        params = [userData.show_picture, userData.chat_room_id, userData.user_id];
-        sqlite3.db.run(query, params, updateShowPictureCb);
-      }
+      userData.settings.forEach(function (setting) {
+        var query = sqlite3.QUERIES.UPDATE_CHAT_ROOM_SETTINGS_BY_USER_ID_AND_CHAT_ROOM_ID;
+        var params = [setting.value, userId, chatRoomId, setting.key];
+        sqlite3.db.run(query, params, updateSettingsCb);
+      });
 
-      function updateTranslateCb(err) {
+      function updateSettingsCb(err) {
         if (err) {
-          errorHandler(socket, emit, err, 'update chat room settings error');
+          errorHandler(socket, emit, err, 'update setting by user id and chat room id error');
         } else {
-          socket.emit(emit, {result : 'OK'});
-        }
-      }
+          updateCount++;
 
-      function updateShowPictureCb(err) {
-        if (err) {
-          errorHandler(socket, emit, err, 'update chat room settings error :');
-        } else {
-          socket.emit(emit, {result : 'OK'});
+          if (updateCount === userData.settings.length) {
+            socket.emit(emit, {result : 'OK'});
+          }
         }
       }
     }
@@ -524,7 +517,7 @@
     function onRetrieveAllChatRoomByUserId(userData) {
       var emit = 'retrievedAllChatRoomByUserId';
       var query = sqlite3.QUERIES.SELECT_ALL_CHAT_ROOM_IDS_AND_FRIEND_ID_AND_LAST_MESSAGE_BY_USER_ID;
-      var params = {$userId : userData.user_id};
+      var params = [userData.user_id, userData.user_id];
       sqlite3.db.all(query, params, callback);
 
       function callback(err, rows) {
@@ -536,89 +529,94 @@
       }
     }
 
-    function _joinChatRoom(userData) {
-      socket.chat_room_id = userData.chat_room_id;
-      socket.join(userData.chat_room_id);
+    function onRetrieveChatRoomId(userData) {
+      var emit = 'retrievedChatRoomId';
+      var query = sqlite3.QUERIES.SELECT_CHAT_ROOM_ID_BY_USER_ID_AND_FRIEND_ID;
+      var params = [userData.user.user_id, userData.to_user.user_id];
+      sqlite3.db.get(query, params, selectChatRoomIdCb);
 
-      socket.emit('joinedChatRoom', {
-        result : {
-          chat_room_id : userData.chat_room_id
+      function selectChatRoomIdCb(err, row) {
+        if (err) {
+          errorHandler(socket, emit, err, 'select chat room id by user id and to user id error');
+        } else {
+          socket.emit(emit, {result : row});
+        }
+      }
+    }
+
+    function onCreateChatRoom(userData) {
+      var emit = 'createdChatRoom';
+      var chatRoomId = createUID('chat_room_id');
+
+      sqlite3.db.serialize(function () {
+        var query = sqlite3.QUERIES.INSERT_CHAT_ROOM;
+        var params = [chatRoomId];
+        sqlite3.db.run(query, params, createChatRoomCb);
+
+        query = sqlite3.QUERIES.INSERT_CHAT_ROOM_USER;
+        params = [chatRoomId, userData.user.user_id];
+        sqlite3.db.run(query, params, createChatRoomUserCb);
+
+        query = sqlite3.QUERIES.INSERT_CHAT_ROOM_USER;
+        params = [chatRoomId, userData.to_user.user_id];
+        sqlite3.db.run(query, params, createChatRoomUserCb);
+
+        query = sqlite3.QUERIES.SELECT_ALL_CHAT_ROOM_SETTING_MASTER;
+        sqlite3.db.each(query, function (err, row) {
+          if (err) {
+            errorHandler(socket, emit, err, 'select all chat setting master error');
+          } else {
+            debug('insert chat room setting per users : ', row);
+            query = sqlite3.QUERIES.INSERT_CHAT_ROOM_SETTINGS;
+            params = [
+              chatRoomId, row.setting_key, row.default_value, userData.user.user_id
+            ];
+            sqlite3.db.run(query, params, createUserChatRoomSettingCb);
+
+            query = sqlite3.QUERIES.INSERT_CHAT_ROOM_SETTINGS;
+            params = [
+              chatRoomId, row.setting_key, row.default_value, userData.to_user.user_id
+            ];
+            sqlite3.db.run(query, params, createUserChatRoomSettingCb);
+          }
+        });
+
+        socket.emit(emit, {result : {chat_room_id : chatRoomId}});
+
+        function createChatRoomCb(err) {
+          if (err) {
+            errorHandler(socket, emit, err, 'insert new chat room error');
+          } else {
+            debug('create new chat room', chatRoomId, userData);
+          }
+        }
+
+        function createChatRoomUserCb(err) {
+          if (err) {
+            errorHandler(socket, emit, err, 'insert chat room user error');
+          } else {
+            debug('insert "user" to chat room users table', userData);
+          }
+        }
+
+        function createUserChatRoomSettingCb(err) {
+          if (err) {
+            errorHandler(socket, emit, err, 'insert user chat room setting error');
+          } else {
+            debug('insert "user" to chat room setting table', userData);
+          }
         }
       });
     }
 
     function onJoinChatRoom(userData) {
-      var chatRoomId = userData.chat_room_id;
       var emit = 'joinedChatRoom';
-      if (!chatRoomId) {
-        sqlite3.db.serialize(function () {
-          var query = sqlite3.QUERIES.SELECT_CHAT_ROOM_ID_BY_USER_ID_AND_FRIEND_ID;
-          var params = [userData.user.user_id, userData.to_user.user_id];
-          sqlite3.db.get(query, params, selectChatRoomIdCb);
-          function selectChatRoomIdCb(err, row) {
-            if (err) {
-              errorHandler(socket, emit, err, 'select chat room id by user id and friend id');
-            } else {
-              if (row) {
-                debug('chat room already exists', userData);
-                userData.chat_room_id = row.chat_room_id;
-                _joinChatRoom(userData);
-              } else {
-                sqlite3.db.serialize(function () {
-                  userData.chat_room_id = chatRoomId = createUID('chat_room_id');
-                  query = sqlite3.QUERIES.INSERT_CHAT_ROOM;
-                  params = [chatRoomId];
-                  sqlite3.db.run(query, params, createChatRoomCb);
+      socket.chat_room_id = userData.chat_room_id;
+      socket.join(userData.chat_room_id);
 
-                  query = sqlite3.QUERIES.INSERT_CHAT_ROOM_SETTINGS;
-                  params = [chatRoomId, userData.user.user_id, 0, 0];
-                  sqlite3.db.run(query, params, createChatRoomSettingsCb);
-
-                  query = sqlite3.QUERIES.INSERT_CHAT_ROOM_SETTINGS;
-                  params = [chatRoomId, userData.to_user.user_id, 0, 0];
-                  sqlite3.db.run(query, params, createChatRoomSettingsCb);
-
-                  query = sqlite3.QUERIES.INSERT_CHAT_ROOM_USER;
-                  params = [chatRoomId, userData.user.user_id];
-                  sqlite3.db.run(query, params, createChatRoomUserCb);
-
-                  query = sqlite3.QUERIES.INSERT_CHAT_ROOM_USER;
-                  params = [chatRoomId, userData.to_user.user_id];
-                  sqlite3.db.run(query, params, createChatRoomUserCb);
-
-                  function createChatRoomCb(err) {
-                    if (err) {
-                      errorHandler(socket, emit, err, 'insert new chat room error');
-                    } else {
-                      debug('create new chat room', chatRoomId, userData);
-                    }
-                  }
-
-                  function createChatRoomSettingsCb(err) {
-                    if (err) {
-                      errorHandler(socket, emit, err, 'insert chat room settings error');
-                    } else {
-                      debug('create new chat room setting', chatRoomId, userData);
-                    }
-                  }
-
-                  function createChatRoomUserCb(err) {
-                    if (err) {
-                      errorHandler(socket, 'joinedChatRoom', err, 'insert chat room user error');
-                    } else {
-                      debug('insert "user" to chat room users table', userData);
-                    }
-                  }
-
-                  _joinChatRoom(userData);
-                });
-              }
-            }
-          }
-        });
-      } else {
-        _joinChatRoom(userData);
-      }
+      socket.emit(emit, {
+        result : 'OK'
+      });
     }
 
     function onTyping(userData) {
