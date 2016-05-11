@@ -98,9 +98,25 @@
     });
   }
 
+  function speak(options, callback) {
+    if (!options.format) {
+      options.format = 'audio/mp3';
+    }
+    mTranslator.speak(options, callback);
+  }
+
+  function speakURL(options, callback) {
+    if (!options.format) {
+      options.format = 'audio/mp3';
+    }
+    mTranslator.speakURL(options, callback);
+  }
+
   module.exports = {
     translate : translate,
     koTranslate : koTranslate,
-    detect : detect
+    detect : detect,
+    speak : speak,
+    speakURL : speakURL
   };
 })();

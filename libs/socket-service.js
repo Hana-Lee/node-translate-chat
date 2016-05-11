@@ -13,6 +13,7 @@
   var md5 = require('md5');
   var callerId = require('caller-id');
   var Promise = require('promise');
+  var fs = require('fs');
 
   var authorizationToken = process.env.IONIC_PUSH_AUTORIZATION_TOKEN;
 
@@ -243,9 +244,20 @@
       function languageDetectCb(detectedResult) {
         debug('Translator detected language : ', detectedResult);
 
-        translator.translate({
+        var options = {
           text : userData.text, from : detectedResult, to : 'ko'
-        }, translateCb);
+        };
+        translator.translate(options, translateCb);
+
+        options.language = detectedResult;
+        translator.speakURL(options, function (err, result) {
+          if (err) {
+            errorHandler(socket, emit, err, 'get speak data error');
+          } else {
+            debug('speak url result : ', result);
+            // fs.writeFileSync('t.mp3', result);
+          }
+        });
       }
 
       function translateCb(translatedResult) {
