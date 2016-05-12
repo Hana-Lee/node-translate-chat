@@ -160,6 +160,7 @@
     socket.on('typing', onTyping);
     socket.on('stop_typing', onStopTyping);
     socket.on('disconnect', onDisconnect);
+    socket.on('deleteChatRoom', onDeleteChatRoom);
 
     function onUpdateSocketId(userData) {
       debug('update socket id', userData);
@@ -650,6 +651,65 @@
 
       socket.broadcast.emit('user_left', {
         user_name : userData.user_name
+      });
+    }
+
+    function onDeleteChatRoom(userData) {
+      debug('delete chat room', userData);
+      var emit = 'deletedChatRoom';
+      var roomId = userData.chat_room_id;
+      sqlite3.db.serialize(function () {
+        var query = sqlite3.QUERIES.DELETE_CHAT_ROOM_BY_CHAT_ROOM_ID;
+        var params = [roomId];
+        sqlite3.db.run(query, params, deleteChatRoomCb);
+
+        query = sqlite3.QUERIES.DELETE_CHAT_ROOM_SETTINGS_BY_CHAT_ROOM_ID;
+        sqlite3.db.run(query, params, deleteChatRoomSettingsCb);
+
+        query = sqlite3.QUERIES.DELETE_CHAT_ROOM_USERS_BY_CHAT_ROOM_ID;
+        sqlite3.db.run(query, params, deleteChatRoomUsersCb);
+
+        query = sqlite3.QUERIES.DELETE_CHAT_MESSAGES_BY_CHAT_ROOM_ID;
+        sqlite3.db.run(query, params, deleteChatMessagesCb);
+
+        query = sqlite3.QUERIES.SELECT_USER_BY_USER_ID;
+        params = [userData.to_user.user_id];
+        sqlite3.db.get(query, params, selectToUserCb);
+
+        function deleteChatRoomCb(err) {
+          if (err) {
+            errorHandler(socket, emit, err, 'delete chat room error');
+          }
+        }
+
+        function deleteChatRoomSettingsCb(err) {
+          if (err) {
+            errorHandler(socket, emit, err, 'delete chat room settings error');
+          }
+        }
+
+        function deleteChatRoomUsersCb(err) {
+          if (err) {
+            errorHandler(socket, emit, err, 'delete chat room users error');
+          }
+        }
+
+        function deleteChatMessagesCb(err) {
+          if (err) {
+            errorHandler(socket, emit, err, 'delete chat messages error');
+          }
+        }
+
+        function selectToUserCb(err, row) {
+          if (err) {
+            errorHandler(socket, emit, err, 'select to user error');
+          } else {
+            socket.broadcast.to(row.socket_id).emit('toUserDeletedChatRoom',
+              {result : {chat_room_id : roomId}}
+            );
+            socket.emit(emit, {result : 'OK'});
+          }
+        }
       });
     }
   }

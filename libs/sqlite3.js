@@ -192,12 +192,12 @@ QUERIES.SELECT_ALL_CHAT_ROOM_SETTINGS_BY_USER_ID_AND_CHAT_ROOM_ID =
 QUERIES.SELECT_ALL_CHAT_ROOM_SETTING_MASTER =
   'SELECT setting_key, setting_name, setting_type, default_value FROM ChatRoomSettingMaster';
 
-QUERIES.DELETE_USER_BY_ID = 'DELETE FROM Users WHERE user_id = ?';
 QUERIES.DELETE_FRIEND_BY_USER_ID_AND_FRIEND_ID = 'DELETE FROM Friends WHERE user_id = ? AND friend_id = ?';
-QUERIES.DELETE_CHAT_ROOM_BY_ID = 'DELETE FROM ChatRooms WHERE chat_room_id = ?';
+QUERIES.DELETE_CHAT_ROOM_BY_CHAT_ROOM_ID = 'DELETE FROM ChatRooms WHERE chat_room_id = ?';
+QUERIES.DELETE_CHAT_ROOM_SETTINGS_BY_CHAT_ROOM_ID = 
+  'DELETE FROM ChatRoomSettings WHERE chat_room_id = ?';
 QUERIES.DELETE_CHAT_MESSAGES_BY_CHAT_ROOM_ID = 'DELETE FROM ChatMessages WHERE char_room_id = ?';
 QUERIES.DELETE_CHAT_ROOM_USERS_BY_CHAT_ROOM_ID = 'DELETE FROM ChatRoomUsers WHERE chat_room_id = ?';
-QUERIES.DELETE_CHAT_ROOM_USERS_BY_USER_ID = 'DELETE FROM ChatRoomUsers WHERE user_id = ?';
 
 function prepareDatabase() {
   db.serialize(function () {
