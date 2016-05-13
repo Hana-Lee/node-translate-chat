@@ -161,6 +161,7 @@
     socket.on('stop_typing', onStopTyping);
     socket.on('disconnect', onDisconnect);
     socket.on('deleteChatRoom', onDeleteChatRoom);
+    socket.on('deleteFriend', onDeleteFriend);
 
     function onUpdateSocketId(userData) {
       debug('update socket id', userData);
@@ -658,56 +659,148 @@
       debug('delete chat room', userData);
       var emit = 'deletedChatRoom';
       var roomId = userData.chat_room_id;
-      sqlite3.db.serialize(function () {
-        var query = sqlite3.QUERIES.DELETE_CHAT_ROOM_BY_CHAT_ROOM_ID;
-        var params = [roomId];
-        sqlite3.db.run(query, params, deleteChatRoomCb);
+      var toUserId = userData.to_user.user_id;
+      Promise.all([_deleteChatRoom(roomId), _deleteChatRoomNotification(toUserId, roomId)])
+        .then(function () {
+          socket.emit(emit, {result : 'OK'});
+        }).catch(function (err) {
+        errorHandler(err, emit, error, 'delete chat room error');
+      });
+    }
 
-        query = sqlite3.QUERIES.DELETE_CHAT_ROOM_SETTINGS_BY_CHAT_ROOM_ID;
-        sqlite3.db.run(query, params, deleteChatRoomSettingsCb);
+    function _deleteChatRoom(roomId) {
+      return new Promise(function (resolve, reject) {
+        sqlite3.db.serialize(function () {
+          var query = sqlite3.QUERIES.DELETE_CHAT_ROOM_BY_CHAT_ROOM_ID;
+          var params = [roomId];
+          sqlite3.db.run(query, params, deleteChatRoomCb);
 
-        query = sqlite3.QUERIES.DELETE_CHAT_ROOM_USERS_BY_CHAT_ROOM_ID;
-        sqlite3.db.run(query, params, deleteChatRoomUsersCb);
+          query = sqlite3.QUERIES.DELETE_CHAT_ROOM_SETTINGS_BY_CHAT_ROOM_ID;
+          sqlite3.db.run(query, params, deleteChatRoomSettingsCb);
 
-        query = sqlite3.QUERIES.DELETE_CHAT_MESSAGES_BY_CHAT_ROOM_ID;
-        sqlite3.db.run(query, params, deleteChatMessagesCb);
+          query = sqlite3.QUERIES.DELETE_CHAT_ROOM_USERS_BY_CHAT_ROOM_ID;
+          sqlite3.db.run(query, params, deleteChatRoomUsersCb);
 
-        query = sqlite3.QUERIES.SELECT_USER_BY_USER_ID;
-        params = [userData.to_user.user_id];
+          query = sqlite3.QUERIES.DELETE_CHAT_MESSAGES_BY_CHAT_ROOM_ID;
+          sqlite3.db.run(query, params, deleteChatMessagesCb);
+
+          function deleteChatRoomCb(err) {
+            if (err) {
+              reject(err);
+            }
+          }
+
+          function deleteChatRoomSettingsCb(err) {
+            if (err) {
+              reject(err);
+            }
+          }
+
+          function deleteChatRoomUsersCb(err) {
+            if (err) {
+              reject(err);
+            }
+          }
+
+          function deleteChatMessagesCb(err) {
+            if (err) {
+              reject(err);
+            } else {
+              resolve('OK');
+            }
+          }
+        });
+      });
+    }
+
+    function _deleteChatRoomNotification(friendId, roomId) {
+      return new Promise(function (resolve, reject) {
+        var query = sqlite3.QUERIES.SELECT_USER_BY_USER_ID;
+        var params = [friendId];
         sqlite3.db.get(query, params, selectToUserCb);
-
-        function deleteChatRoomCb(err) {
-          if (err) {
-            errorHandler(socket, emit, err, 'delete chat room error');
-          }
-        }
-
-        function deleteChatRoomSettingsCb(err) {
-          if (err) {
-            errorHandler(socket, emit, err, 'delete chat room settings error');
-          }
-        }
-
-        function deleteChatRoomUsersCb(err) {
-          if (err) {
-            errorHandler(socket, emit, err, 'delete chat room users error');
-          }
-        }
-
-        function deleteChatMessagesCb(err) {
-          if (err) {
-            errorHandler(socket, emit, err, 'delete chat messages error');
-          }
-        }
 
         function selectToUserCb(err, row) {
           if (err) {
-            errorHandler(socket, emit, err, 'select to user error');
+            reject(err);
           } else {
             socket.broadcast.to(row.socket_id).emit('toUserDeletedChatRoom',
               {result : {chat_room_id : roomId}}
             );
-            socket.emit(emit, {result : 'OK'});
+            resolve('OK');
+          }
+        }
+      });
+    }
+
+    function onDeleteFriend(userData) {
+      var emit = 'deletedFriend';
+      var friendId = userData.friend.user_id;
+      var userId = userData.user.user_id;
+
+      sqlite3.db.serialize(function () {
+        var query = sqlite3.QUERIES.DELETE_FRIEND_BY_USER_ID_AND_FRIEND_ID;
+        var params = [userId, friendId];
+        sqlite3.db.run(query, params, deleteFriendCb);
+
+        query = sqlite3.QUERIES.DELETE_FRIEND_BY_USER_ID_AND_FRIEND_ID;
+        params = [friendId, userId];
+        sqlite3.db.run(query, params, deleteFriendCb);
+
+        query = sqlite3.QUERIES.SELECT_USER_BY_USER_ID;
+        params = [friendId];
+        sqlite3.db.get(query, params, selectUserCb);
+
+        query = sqlite3.QUERIES.SELECT_CHAT_ROOM_ID_BY_USER_ID_AND_FRIEND_ID;
+        params = [userId, friendId];
+        sqlite3.db.get(query, params, selectChatRoomCb);
+
+        _getAllFriend(userId).then(function (result) {
+          socket.emit(emit, {result : result});
+        });
+
+        function deleteFriendCb(err) {
+          if (err) {
+            errorHandler(socket, emit, err, 'delete friend error');
+          }
+        }
+
+        function selectUserCb(err, row) {
+          if (err) {
+            errorHandler(socket, emit, err, 'select user error');
+          } else {
+            socket.broadcast.to(row.socket_id).emit('friendDeletedYou', {
+              result : userId
+            });
+          }
+        }
+
+        function selectChatRoomCb(err, row) {
+          if (err) {
+            errorHandler(socket, emit, err, 'select chat room by user id and friend id error');
+          } else if (row) {
+            var roomId = row.chat_room_id;
+            Promise.all([
+              _deleteChatRoom(roomId),
+              _deleteChatRoomNotification(friendId, roomId)
+            ]).catch(function (err) {
+              errorHandler(err, emit, error, 'delete chat room error');
+            });
+          }
+        }
+      });
+    }
+
+    function _getAllFriend(userId) {
+      return new Promise(function (resolve, reject) {
+        var query = sqlite3.QUERIES.SELECT_ALL_FRIENDS_BY_USER_ID;
+        var params = [userId];
+        sqlite3.db.all(query, params, selectAllFriendCb);
+
+        function selectAllFriendCb(err, rows) {
+          if (err) {
+            reject(err);
+          } else {
+            resolve(rows);
           }
         }
       });
