@@ -163,6 +163,7 @@
     socket.on('deleteChatRoom', onDeleteChatRoom);
     socket.on('deleteFriend', onDeleteFriend);
     socket.on('updateUserName', onUpdateUserName);
+    socket.on('updateUserFace', onUpdateUserFace);
 
     function onUpdateSocketId(userData) {
       debug('update socket id', userData);
@@ -837,6 +838,24 @@
           result : userName
         });
       });
+    }
+
+    function onUpdateUserFace(userData) {
+      var emit = 'updatedUserFace';
+      var userId = userData.user.user_id;
+      var userFace = userData.user.user_face;
+      var query = sqlite3.QUERIES.UPDATE_USERS_SET_USER_FACE_BY_USER_ID;
+      var params = [userFace, userId];
+
+      sqlite3.db.run(query, params, updateUserFaceCb);
+
+      function updateUserFaceCb(err) {
+        if (err) {
+          errorHandler(socket, emit, err, 'update user face error');
+        } else {
+          socket.emit('updatedUserFace', {result : 'OK'});
+        }
+      }
     }
   }
 })();
