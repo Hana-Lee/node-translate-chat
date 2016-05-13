@@ -1,6 +1,6 @@
 {
   "name": "node-translate-chat",
-  "version": "0.0.1",
+  "version": "0.1.0",
   "description": "Node.js and socket.io translate chat server",
   "main": "app.js",
   "scripts": {
