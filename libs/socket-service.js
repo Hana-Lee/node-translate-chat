@@ -162,6 +162,7 @@
     socket.on('disconnect', onDisconnect);
     socket.on('deleteChatRoom', onDeleteChatRoom);
     socket.on('deleteFriend', onDeleteFriend);
+    socket.on('updateUserName', onUpdateUserName);
 
     function onUpdateSocketId(userData) {
       debug('update socket id', userData);
@@ -803,6 +804,38 @@
             resolve(rows);
           }
         }
+      });
+    }
+
+    function onUpdateUserName(userData) {
+      var emit = 'updatedUserName';
+      var userName = userData.user.user_name;
+      var userId = userData.user.user_id;
+      var query = sqlite3.QUERIES.UPDATE_USERS_SET_USER_NAME_BY_USER_ID;
+      var params = [userName, userId];
+
+      sqlite3.db.run(query, params, updateUserNameCb);
+
+      function updateUserNameCb(err) {
+        if (err) {
+          errorHandler(socket, emit, err, 'update user name error');
+        } else {
+          _getAllFriend(userId).then(function (friends) {
+            _userNameUpdateNotification(userName, friends);
+          }).catch(function (err) {
+            errorHandler(socket, emit, err, 'get all friend error');
+          });
+
+          socket.emit(emit, {result : 'OK'});
+        }
+      }
+    }
+
+    function _userNameUpdateNotification(userName, friends) {
+      friends.forEach(function (friend) {
+        socket.broadcast.to(friend.socket_id).emit('friendNameUpdated', {
+          result : userName
+        });
       });
     }
   }
